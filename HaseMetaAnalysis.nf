@@ -197,6 +197,7 @@ process MetaAnalyseCohorts {
     -maf !{maf} \
     -th !{th} \
     -mapper_chunk 500 \
+    -ref_name 1000G-30x_ref \
     -cluster "y" \
     !{snp_filtering} \
     !{phen_filtering} \
