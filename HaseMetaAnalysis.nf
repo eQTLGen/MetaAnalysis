@@ -119,7 +119,7 @@ process GetInputVariables {
     env encodedstatus
 
   shell:
-  if (params.permuted == 'no')
+  if (params.permuted == 'yes')
       '''
     files_paths=$(ls -d !{inputpath}/*/*_IntermediateFilesEncoded_to_upload/permuted/)
     genotype_paths=$(ls -d !{inputpath}/*/*_IntermediateFilesEncoded_to_upload/permuted/EncodedGenotypeData/)
