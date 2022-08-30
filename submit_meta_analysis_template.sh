@@ -1,28 +1,32 @@
 #!/bin/bash
 
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=2G
-#SBATCH --job-name="RunHASEwNextflow"
+#SBATCH --mail-type=BEGIN
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --job-name="MetaAnalysis"
 
-# Here load needed system tools (Java 1.8 is strictly required, one of two: singularity or conda for python 2.7 are needed,
-# depending on the method which is used for dependency management)
+# These are needed modules in UT HPC to get singularity and Nextflow running. Replace with appropriate ones for your HPC.
 module load java-1.8.0_40
-module load python/2.7.15/native
 module load singularity/3.5.3
 module load squashfs/4.4
 
-nextflow_path=[Path to tool folder with nextflow]
+# Define paths 
+nextflow_path=[folder where Nextflow executable is]
 
-NXF_VER=20.10.0 ${nextflow_path}/nextflow run HaseMetaAnalysis.nf \
---genopath '[Path(s) to encoded genotype folder(s)]' \
---expressionpath '[Path(s) to encoded expression data folder(s)]' \
---mapperpath '[Path to folder with mapper files from all datasets]' \
---pdpath '[Path(s) to partial derivatives folder(s)]' \
---studynames '[CohortName_GeneExpressionPlatform_for_first_dataset CohortName_GeneExpressionPlatform_for_second_dataset]' \
---outputpath '[Path to results output folder]' \
---maf 0.01 \
--with-report Meta_analysis_report.html \
+mastertable=[path to mastertable]
+mapper_folder=[path to the folder with all mapper files]
+output_folder=[path to the folder where output files are written]
+
+
+NXF_VER=20.10.6 ${nextflow_path}/nextflow run HaseMetaAnalysis.nf \
+--mastertable ${mastertable} \
+--mapperpath ${mapper_folder} \
+--covariates /gpfs/space/GI/eQTLGen/EstBB_testing/MetaAnalysis/helpfiles2/covariate_indices.txt \
+--chunks 100 \
+--outdir ${output_folder} \
 -resume \
--profile singularity_profile,cluster_slurm
+-profile slurm,singularity
