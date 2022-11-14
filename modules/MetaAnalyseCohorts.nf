@@ -10,19 +10,19 @@ process MetaAnalyseCohorts {
     input:
       val chunk
       path mapper
-      value th
-      value nr_chunks
+      val th
+      val nr_chunks
       path snp_inclusion
       path gene_inclusion
       path covariate_filtering 
       path genotype, stageAs: "genotypes_???"
       path expression, stageAs: "expression_???"
       path partial_derivatives, stageAs: "pd_???"
-      value cohort
+      val cohort
       val encoded
 
     output:
-      path 'MetaAnalysisResultsEncoded/*.parquet' into MetaAnalysisResultsEncoded
+      path 'MetaAnalysisResultsEncoded/*.parquet'
 
     shell:
     '''

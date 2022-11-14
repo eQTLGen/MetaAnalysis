@@ -7,12 +7,7 @@
 nextflow.enable.dsl = 2
 
 // import modules
-include { REGENIE_STEP_1 } from './modules/regenie-step-1'
-include { REGENIE_STEP_2 } from './modules/regenie-step-2'
-include { MERGE_ZIP } from './modules/merge-zip'
-include { PLOT } from './modules/manhattan-plot'
-
-
+include { MetaAnalyseCohorts } from './modules/MetaAnalyseCohorts'
 
 def helpmessage() {
 
@@ -34,7 +29,7 @@ nextflow run HaseMetaAnalysis.nf \
 Mandatory arguments:
 --mastertable     Path to the master file with following columns. cohort: cohort name, genotype: path to encoded genotype data, expression: path to encoded expression data, partial_derivatives: path to partial derivatives folder, encoded: encoded status 0 or 1, snp_inclusion: path to SNPs inclusion file (header "ID", and SNP IDs on each row) and gene_inclusion: path to gene inclusion file (header "ID", and gene IDs on each row).
 --mapperpath      Path to the mappers folder, containing the mapper files for each cohort.
---outputpath      Path to results folder where meta-analysis outputs are written.
+--outdir      Path to results folder where meta-analysis outputs are written.
 --covariates      What covariates to include into the analysis for each cohort. If specified, the it has to be the file which has each line formatted as following: [cohort name] [index of covariate to include 1] [index of covariate to include 2] etc. Indexing is 1-based and defaults to all covariates.
 
 
@@ -48,7 +43,7 @@ Optional arguments:
 
 //Default parameters
 params.mastertable = ''
-params.outputpath = ''
+params.outdir = ''
 params.mapperpath = ''
 params.th = 0
 params.covariates = ''
@@ -78,11 +73,8 @@ summary['Nr. of chunks']                            = params.chunks
 log.info summary.collect { k,v -> "${k.padRight(21)}: $v" }.join("\n")
 log.info "================================================="
 
-workflow {
-
 
 // Process input file paths
-mastertable = file(params.mastertable)
 
 cohort_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
@@ -112,7 +104,7 @@ encoded_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
     .map{row -> [ "${row.encoded}" ]}
-    .collect()
+    .collect().view()
     
 snp_inclusion_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
@@ -128,6 +120,8 @@ gene_inclusion_ch = Channel.fromPath(params.mastertable)
 
 mapper = file(params.mapperpath)
 
+test_ch = Channel.fromPath(params.mastertable)
+
 // Optional arguments
 th = params.th
 chunks = params.chunks
@@ -138,9 +132,11 @@ if (params.covariates) {
 
 chunk = Channel.from(1..chunks)
 
+workflow {
+
 MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch, 
 gene_inclusion_ch, covariate_file, genotype_ch, expression_ch, 
-partial_derivatives_ch, cohort_ch)
+partial_derivatives_ch, cohort_ch, encoded_ch)
 
 }
 
