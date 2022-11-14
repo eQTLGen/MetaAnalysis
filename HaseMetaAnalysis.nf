@@ -1,4 +1,18 @@
-#!/usr/bin/env nextflow
+#!/bin/bash nextflow
+
+
+/* 
+ * enables modules 
+ */
+nextflow.enable.dsl = 2
+
+// import modules
+include { REGENIE_STEP_1 } from './modules/regenie-step-1'
+include { REGENIE_STEP_2 } from './modules/regenie-step-2'
+include { MERGE_ZIP } from './modules/merge-zip'
+include { PLOT } from './modules/manhattan-plot'
+
+
 
 def helpmessage() {
 
@@ -20,7 +34,7 @@ nextflow run HaseMetaAnalysis.nf \
 Mandatory arguments:
 --mastertable     Path to the master file with following columns. cohort: cohort name, genotype: path to encoded genotype data, expression: path to encoded expression data, partial_derivatives: path to partial derivatives folder, encoded: encoded status 0 or 1, snp_inclusion: path to SNPs inclusion file (header "ID", and SNP IDs on each row) and gene_inclusion: path to gene inclusion file (header "ID", and gene IDs on each row).
 --mapperpath      Path to the mappers folder, containing the mapper files for each cohort.
---outdir          Path to results folder where meta-analysis outputs are written.
+--outputpath      Path to results folder where meta-analysis outputs are written.
 --covariates      What covariates to include into the analysis for each cohort. If specified, the it has to be the file which has each line formatted as following: [cohort name] [index of covariate to include 1] [index of covariate to include 2] etc. Indexing is 1-based and defaults to all covariates.
 
 
@@ -34,7 +48,7 @@ Optional arguments:
 
 //Default parameters
 params.mastertable = ''
-params.outdir = ''
+params.outputpath = ''
 params.mapperpath = ''
 params.th = 0
 params.covariates = ''
@@ -64,7 +78,8 @@ summary['Nr. of chunks']                            = params.chunks
 log.info summary.collect { k,v -> "${k.padRight(21)}: $v" }.join("\n")
 log.info "================================================="
 
-// Count the number of input datasets
+workflow {
+
 
 // Process input file paths
 mastertable = file(params.mastertable)
@@ -72,54 +87,45 @@ mastertable = file(params.mastertable)
 cohort_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.cohort}" ]}
-    .view{}
-    
-cohort = Channel.value("${cohort_ch}")
+    .map{row -> [ row.cohort ]}
+    .collect()
 
 genotype_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.genotype}" ]}
+    .map{row -> [ row.genotype ]}
+    .collect()
     
-genotype = Channel.value("${genotype_ch}")
-
 expression_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.expression}" ]}
-    .view()
+    .map{row -> [ row.expression ]}
+    .collect()
     
-expression = Channel.value("${expression_ch}")
-
 partial_derivatives_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.partial_derivatives}" ]}
+    .map{row -> [ row.partial_derivatives ]}
+    .collect()
     
-partial_derivatives = Channel.value("${partial_derivatives_ch}")
-
 encoded_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
     .map{row -> [ "${row.encoded}" ]}
+    .collect()
     
-encoded = Channel.value("${encoded_ch}")
-
 snp_inclusion_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "-snp_id_inc ${row.snp_inclusion}" ]}
-    
-snp_inclusion = Channel.value("${snp_inclusion_ch}")
+    .map{row -> [ "${row.snp_inclusion}" ]}
+    .collect()
 
 gene_inclusion_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
     .map{row -> [ "${row.gene_inclusion}" ]}
-    
-gene_inclusion = Channel.value("-ph_id_inc ${gene_inclusion_ch}")
-/* 
+    .collect()
+
 mapper = file(params.mapperpath)
 
 // Optional arguments
@@ -128,62 +134,16 @@ chunks = params.chunks
 
 if (params.covariates) { 
   covariate_file = file(params.covariates) 
-  covariate_filtering = Channel.value("-ci ${covariate_file}")
-} else {covariate_filtering = Channel.value("")}
+} else {covariate_file = Channel.value("")}
 
 chunk = Channel.from(1..chunks)
 
-process MetaAnalyseCohorts {
+MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch, 
+gene_inclusion_ch, covariate_file, genotype_ch, expression_ch, 
+partial_derivatives_ch, cohort_ch)
 
-    tag "chunk $chunk"
-
-    publishDir "${params.outdir}", mode: 'copy'
-
-    input:
-      val chunk from chunk
-      path mapper from mapper
-      val(th) from th
-      val(nr_chunks) from chunks
-      val(snp_inclusion) from snp_inclusion
-      val(gene_inclusion) from gene_inclusion
-      val(covariate_filtering) from covariate_filtering
-      val(genotype) from genotype
-      val(expression) from expression
-      val(partial_derivatives) from partial_derivatives
-      val(cohort) from cohort
-      val(encoded) from encoded
-
-    output:
-      path 'MetaAnalysisResultsEncoded/*.parquet' into MetaAnalysisResultsEncoded
-
-    shell:
-    '''
-    export MKL_NUM_THREADS=1
-    export NUMEXPR_NUM_THREADS=1
-    export OMP_NUM_THREADS=1
-
-    python2 !{baseDir}/bin/hase/hase.py \
-    -study_name !{cohort} \
-    -g !{genotype} \
-    -ph !{expression} \
-    -derivatives !{partial_derivatives} \
-    -mapper !{mapper}/ \
-    -o MetaAnalysisResultsEncoded \
-    -mode meta-classic \
-    -encoded ${encodedstatus} \
-    -allow_missingness \
-    -node !{nr_chunks} !{chunk} \
-    -th !{th} \
-    -mapper_chunk 500 \
-    -ref_name 1000G-30x_ref \
-    -cluster "y" \
-    !{snp_inclusion} \
-    !{gene_inclusion} \
-    !{covariate_filtering}
-    '''
 }
 
 workflow.onComplete {
     println ( workflow.success ? "Pipeline finished!" : "Something crashed...debug!" )
 }
- */
