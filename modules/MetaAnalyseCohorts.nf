@@ -59,6 +59,6 @@ process MetaAnalyseCohorts {
     -cluster "y" \
     -snp_id_inc ${snp_inclusion} \
     -ph_id_inc ${gene_inclusion} \
-    !{covariate_filtering}
+    -ci !{covariate_filtering}
     '''
 }
