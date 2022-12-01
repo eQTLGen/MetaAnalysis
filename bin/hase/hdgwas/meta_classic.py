@@ -228,7 +228,7 @@ class ClassicMetaAnalyser:
 
         t_statistic_mask = np.full((results_dataframe.shape[0]), True)
 
-        if self.t_statistic_threshold != 0:
+        if self.t_statistic_threshold is not None and self.t_statistic_threshold != 0:
             t_statistic_mask = (
                     np.abs(results_dataframe['beta'] / results_dataframe['standard_error'])
                     > self.t_statistic_threshold)
@@ -238,7 +238,7 @@ class ClassicMetaAnalyser:
         for cohort in self.cohort_list:
             file_path = os.path.join(
                 self.out, "failed", cohort.study_name, "a_singular_{}.txt")
-            for variant_name, a_singular_matrix in cohort.a_singular:
+            for variant_name, a_singular_matrix in cohort.a_singular.items():
                 np.savetxt(
                     file_path.format(variant_name),
                     a_singular_matrix)
