@@ -40,7 +40,7 @@ Or just download this from the gitlab/github download link and unzip.
 
 ##### Initial preparations
 
-We provide separate R script which can be used to easily make per-cohort SNP inlcusion lists, gene inclusion lists and covariate file. The script template is findable from `bin/make_inclusion_lists.R`. This script expects that data is prepared as specified in [eQTLGen phase 2 cookbook](https://eqtlgen.github.io/eqtlgen-web-site/eQTLGen-p2-cookbook.html).
+We provide separate R script which can be used to easily make per-cohort SNP inclusion lists, gene inclusion lists and covariate file. The script template is findable from `bin/make_inclusion_lists.R`. This script expects that data is prepared as specified in [eQTLGen phase 2 cookbook](https://eqtlgen.github.io/eqtlgen-web-site/eQTLGen-p2-cookbook.html).
 
 You need following R packages to run this helper script: `data.table`, `stringr`, `fs`, `tidyr`, `gtools`.
 
@@ -181,9 +181,25 @@ The output of this script writes into specified folder for each dataset:
 - SNP inclusion files (`*_SnpsToInclude.txt`)
 - Gene inclusion files (`*_GenesToInclude.txt`)
 
-It also writes covariate file to the same folder: `covariate_indices.txt`
+It also writes covariate inclusion file to the same folder: `covariate_indices.txt`. You can adjust this manually, to include additional covariates which are not expression PCs.
 
-Additionally it writes log file which gives some summary statistics about each cohort: `filter_logs.log`. This one can be used to identify datasets which behave differently from the rest.
+Additionally it writes log file which gives some summary statistics about each cohort: `filter_logs.log`. This one can be used for per-cohort QC, to identify datasets which behave differently from the rest.
+
+#### Required inputs
+
+- Master table with per-cohort input paths. This is tab-separated file with following columns:
+  - cohort: Name of your cohort, as used in eQTL cookbook.
+  - genotype: path to encoded genotype folder for given cohort.
+  - expression: path to encoded expression folder for given cohort.
+  - partial_derivatives: path to partial derivatives folder for given cohort.
+  - encoded: whether data is encoded (0/1), for eQTLGen p2 it is always encoded: 1.
+  - snp_inclusion: path to SNP inclusion file (as prepared above).
+  - gene_inclusion: path to gene inclusion file (as prepared above).
+  
+  You can prepare this file in e.g. Excel.
+
+- Covariate indices file, e.g. `covariate_indices.txt`, prepared as specified above.
+- Folder with all the mapper files from every cohort included to the analysis. Those mapper files are prepared for sharing by `PerCohortDataPreparations` and you pipeline need to copy/move/symlink those into one folder.
 
 #### Running the meta-analysis command
 
@@ -212,7 +228,6 @@ nextflow_path=[folder where Nextflow executable is] # folder where Nextflow exec
 mastertable=[path to mastertable]
 mapper_folder=[path to the folder with all mapper files]
 output_folder=[path to the folder where output files are written]
-
 
 NXF_VER=20.10.6 ${nextflow_path}/nextflow run HaseMetaAnalysis.nf \
 --mastertable ${mastertable} \
