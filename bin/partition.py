@@ -47,6 +47,7 @@ __description__ = "{} is a program developed and maintained by {}. " \
 
 
 # Constants
+MAX_SIZE = 1*10**9
 
 # Classes
 
@@ -58,15 +59,17 @@ def main(argv=None):
         argv = sys.argv[1:]
     # Process input
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path')
+    parser.add_argument('--path', nargs='+')
     parser.add_argument('--out')
 
     args = parser.parse_args(argv)
     # Perform method
 
-    file_names_parquet = glob.glob(os.path.join(args.path, "*.parquet"))
-    for file_name in file_names_parquet:
-        results = pq.ParquetFile(file_name)
+    results_list = list()
+
+    for file_name in args.path:
+        print("Reading file " + file_name)
+        results_list.append(pq.ParquetFile(file_name).read().to_pandas())
 
         pyarrow_schema = pa.schema(
             [("variant", pa.string()),
@@ -78,11 +81,27 @@ def main(argv=None):
 
         # Output
 
-        pq.write_to_dataset(
-            table=pa.Table.from_pandas(results, pyarrow_schema),
-            root_path=args.out,
-            partition_cols=["phenotype"]
-        )
+        sum1 = sum([len(results) for results in results_list])
+        print(sum1)
+        if sum1 > MAX_SIZE:
+            concatenate = pd.concat(results_list)
+            results_list = list()
+
+            print("Writing results")
+
+            pq.write_to_dataset(
+                table=pa.Table.from_pandas(concatenate, pyarrow_schema),
+                root_path=args.out,
+                partition_cols=["phenotype"]
+            )
+
+    concatenate = pd.concat(results_list)
+
+    pq.write_to_dataset(
+        table=pa.Table.from_pandas(concatenate, pyarrow_schema),
+        root_path=args.out,
+        partition_cols=["phenotype"]
+    )
 
     return 0
 
