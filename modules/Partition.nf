@@ -1,4 +1,4 @@
-#!/bin/bash nextflow 
+#!/bin/bash nextflow
 
 
 process Partition {
@@ -12,7 +12,7 @@ process Partition {
     shell:
     '''
     python2 !{baseDir}/bin/partition.py \
-    --path ${parquet} \
+    --path !{parquet} \
     --out "partitioned"
     '''
 }

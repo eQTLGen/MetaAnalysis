@@ -10,17 +10,20 @@
 #SBATCH --job-name="MetaAnalysis"
 
 # These are needed modules in UT HPC to get singularity and Nextflow running. Replace with appropriate ones for your HPC.
-module load java-1.8.0_40
-module load singularity/3.5.3
+module load jdk/16.0.1
+module load openjdk/11.0.2
+module load any/singularity
 module load squashfs/4.4
 
-# Define paths 
-nextflow_path=[folder where Nextflow executable is]
+# Define paths
+nextflow_path=/gpfs/space/GI/eQTLGen/EstBB_testing/MetaAnalysis/tools
 
-input_path=[path to input files]
-output_folder=[path to the folder where output files are written]
+set -f
 
-NXF_VER=20.10.6 ${nextflow_path}/nextflow run OutputPerPhenotype.nf \
+input_path='/gpfs/space/GI/eQTLGen/freeze1/eqtl_mapping/output/empirical_4GenPC20ExpPC_2022-11-14/MetaAnalysisResultsEncoded/node_1_*_result.parquet'
+output_folder=../output/MetaAnalysisResultsPartitioned
+
+NXF_VER=21.10.6 ${nextflow_path}/nextflow run OutputPerPhenotype.nf \
 --input ${input_path} \
 --outdir ${output_folder} \
 -resume \

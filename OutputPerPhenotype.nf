@@ -50,11 +50,11 @@ log.info "================================================="
 
 // Process input file paths
 
-parquet = Channel.fromPath(params.input)
+parquet = Channel.fromPath(params.input, glob: true)
     .ifEmpty { error "Cannot find input: ${params.input}" }
     .collect()
 
-out = path(params.outdir)
+out = Channel.fromPath(params.outdir)
 
 workflow {
 

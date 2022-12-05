@@ -11,8 +11,8 @@ process Combine {
     shell:
     '''
     python2 !{baseDir}/bin/combine.py \
-    --path ${parquet} \
-    --pheno ${phenotype} \
-    --out ${out} \
+    --path !{parquet} \
+    --pheno !{phenotype} \
+    --out !{out} \
     '''
 }

@@ -47,7 +47,7 @@ __description__ = "{} is a program developed and maintained by {}. " \
 
 
 # Constants
-MAX_SIZE = 1*10**9
+MAX_SIZE = 1*10**8
 
 # Classes
 
@@ -67,11 +67,9 @@ def main(argv=None):
 
     results_list = list()
 
-    for file_name in args.path:
-        print("Reading file " + file_name)
-        results_list.append(pq.ParquetFile(file_name).read().to_pandas())
+    print("hi")
 
-        pyarrow_schema = pa.schema(
+    pyarrow_schema = pa.schema(
             [("variant", pa.string()),
              ("phenotype", pa.string()),
              ("beta", pa.float64()),
@@ -79,15 +77,19 @@ def main(argv=None):
              ("i_squared", pa.float64()),
              ("sample_size", pa.float64())])
 
+    #    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
+    for file_name in args.path:
+        print("Reading file " + file_name)
+        results_list.append(pq.ParquetFile(file_name).read().to_pandas())
+
         # Output
 
         sum1 = sum([len(results) for results in results_list])
         print(sum1)
         if sum1 > MAX_SIZE:
+            print("Writing results")
             concatenate = pd.concat(results_list)
             results_list = list()
-
-            print("Writing results")
 
             pq.write_to_dataset(
                 table=pa.Table.from_pandas(concatenate, pyarrow_schema),
