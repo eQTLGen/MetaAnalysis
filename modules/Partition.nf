@@ -13,8 +13,7 @@ process Partition {
     '''
     mkdir "partitioned"
 
-    python2 !{baseDir}/bin/partition.py \
+    python2 -u !{baseDir}/bin/partition.py \
     --path !{parquet} \
     --out "partitioned"
     '''
-}
