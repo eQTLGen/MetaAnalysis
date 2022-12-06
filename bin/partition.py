@@ -52,6 +52,12 @@ MAX_SIZE = 1*10**8
 # Classes
 
 # Functions
+def write_results(results_list, out):
+    print("Writing results")
+    results = pd.concat(results_list)
+    for phenotype, phenotype_results in results.groupby(["phenotype"]):
+        phenotype_results.to_csv(os.path.join(out, 'phenotype_{}.csv').format(phenotype), mode='a', compression='gzip')
+
 
 # Main
 def main(argv=None):
@@ -83,28 +89,13 @@ def main(argv=None):
         results_list.append(pq.ParquetFile(file_name).read().to_pandas())
 
         # Output
-
         sum1 = sum([len(results) for results in results_list])
         print(sum1)
         if sum1 > MAX_SIZE:
-            print("Writing results")
-            concatenate = pd.concat(results_list)
+            write_results(results_list, args.out)
             results_list = list()
 
-            pq.write_to_dataset(
-                table=pa.Table.from_pandas(concatenate, pyarrow_schema),
-                root_path=args.out,
-                partition_cols=["phenotype"]
-            )
-
-    concatenate = pd.concat(results_list)
-
-    pq.write_to_dataset(
-        table=pa.Table.from_pandas(concatenate, pyarrow_schema),
-        root_path=args.out,
-        partition_cols=["phenotype"]
-    )
-
+    write_results(results_list, args.out)
     return 0
 
 
