@@ -47,7 +47,7 @@ __description__ = "{} is a program developed and maintained by {}. " \
 
 
 # Constants
-MAX_SIZE = 1*10**8
+MAX_SIZE = 4*10**8
 
 # Classes
 
@@ -77,32 +77,53 @@ def main(argv=None):
     args = parser.parse_args(argv)
     # Perform method
 
+    path_base_name = os.path.dirname(args.path[0])
+
+    file_struct = dict()
+    file_struct["file"] = list()
+    file_struct["chunk"] = list()
+    file_struct["iteration"] = list()
+
+    for path in args.path:
+        file_name = os.path.basename(path)
+        splitted = file_name.split("_")
+        file_struct['file'].append(path)
+        file_struct['chunk'].append(int(splitted[2]))
+        file_struct['iteration'].append(int(splitted[4]))
+
+    file_df = pd.DataFrame(file_struct)
+    file_df["rank"] = file_df.groupby("chunk")["iteration"].rank(method="dense")
+    print(file_df)
+
     results_list = list()
 
-    print("hi")
+#    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
+    for phen_chunk in file_df.groupby(["rank"]):
+        for i, (index, row) in enumerate(phen_chunk.iterrows()):
+            file_name = row['file']
+            print("Reading file " + file_name)
+            print("(file {}/{})".format(i+1, len(phen_chunk)))
+            results_list.append(pq.ParquetFile(file_name).read())
 
-    pyarrow_schema = pa.schema(
-            [("variant", pa.string()),
-             ("phenotype", pa.string()),
-             ("beta", pa.float64()),
-             ("standard_error", pa.float64()),
-             ("i_squared", pa.float64()),
-             ("sample_size", pa.float64())])
+            # Output
+            sum1 = sum([len(results) for results in results_list])
+            print(sum1)
+            if sum1 > MAX_SIZE:
+                #write_results(results_list, args.out)
+                pq.write_to_dataset(
+                    table=pa.concat_tables(results_list),
+                    root_path=args.out,
+                    partition_cols=["phenotype"]
+                )
+                results_list = list()
 
-    #    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
-    for i, file_name in enumerate(args.path):
-        print("Reading file " + file_name)
-        print("(file {}/{})".format(i+1, len(args.path)))
-        results_list.append(pq.ParquetFile(file_name).read().to_pandas())
+        #write_results(results_list, args.out)
 
-        # Output
-        sum1 = sum([len(results) for results in results_list])
-        print(sum1)
-        if sum1 > MAX_SIZE:
-            write_results(results_list, args.out)
-            results_list = list()
-
-    write_results(results_list, args.out)
+        pq.write_to_dataset(
+            table=pa.concat_tables(results_list),
+            root_path=args.out,
+            partition_cols=["phenotype"]
+        )
     return 0
 
 

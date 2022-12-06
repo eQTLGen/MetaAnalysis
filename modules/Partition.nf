@@ -8,7 +8,7 @@ process Partition {
       val chunk
 
     output:
-      path "partitioned"
+      path "partitioned_!{chunk}"
 
     shell:
     '''
