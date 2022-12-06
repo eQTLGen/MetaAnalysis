@@ -102,7 +102,7 @@ def main(argv=None):
     results_list = list()
 
 #    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
-    for phen_chunk in file_df.groupby(["rank"]):
+    for group_id, phen_chunk in file_df.groupby(["rank"]):
         for i, (index, row) in enumerate(phen_chunk.iterrows()):
             file_name = row['file']
             print("Reading file " + file_name)
