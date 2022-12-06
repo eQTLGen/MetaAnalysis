@@ -11,6 +11,8 @@ process Partition {
 
     shell:
     '''
+    mkdir "partitioned"
+
     python2 !{baseDir}/bin/partition.py \
     --path !{parquet} \
     --out "partitioned"
