@@ -53,10 +53,16 @@ MAX_SIZE = 1*10**8
 
 # Functions
 def write_results(results_list, out):
-    print("Writing results")
+    print("Writing results step")
     results = pd.concat(results_list)
-    for phenotype, phenotype_results in results.groupby(["phenotype"]):
-        phenotype_results.to_csv(os.path.join(out, 'phenotype_{}.csv').format(phenotype), mode='a', compression='gzip')
+    for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
+        print(index, phenotype, end="\r")
+        (phenotype_results
+            .drop('phenotype', inplace=False, axis=1)
+            .to_csv(
+                os.path.join(out, 'phenotype_{}.csv.gz').format(phenotype),
+                index=False, mode='a', compression='gzip'))
+    print("Finished writing step!")
 
 
 # Main
