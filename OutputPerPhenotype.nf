@@ -27,6 +27,7 @@ Pay attention that it does not explicitly overwrite the output folder, so clean 
 //Default parameters
 params.input = ''
 params.outdir = ''
+params.chunks = 100
 
 log.info """=================================================
 HASE meta-analyzer v${workflow.manifest.version}"
@@ -50,16 +51,17 @@ log.info "================================================="
 
 // Process input file paths
 
-parquet = Channel.fromPath(params.input, glob: true)
-    .ifEmpty { error "Cannot find input: ${params.input}" }
-    .collect()
+parquet = Channel.fromPath(params.input)
 
 out = Channel.fromPath(params.outdir)
+
+chunks = params.chunks
+chunk = Channel.from(1..chunks)
 
 workflow {
 
 phenotypes = channel.from("ENSG00000004487", "ENSG00000010626", "ENSG00000028839", "ENSG00000059758", "ENSG00000180481")
-Partition(parquet)
+Partition(parquet, chunk)
 Combine(Partition.out, phenotypes, out)
 
 }
