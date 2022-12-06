@@ -53,10 +53,16 @@ MAX_SIZE = 1*10**8
 
 # Functions
 def write_results(results_list, out):
-    print("Writing results")
+    print("Writing results step")
     results = pd.concat(results_list)
-    for phenotype, phenotype_results in results.groupby(["phenotype"]):
-        phenotype_results.to_csv(os.path.join(out, 'phenotype_{}.csv.gz').format(phenotype), mode='a', compression='gzip')
+    for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
+        print(index, phenotype, end="\r")
+        (phenotype_results
+            .drop('phenotype', inplace=False, axis=1)
+            .to_csv(
+                os.path.join(out, 'phenotype_{}.csv.gz').format(phenotype),
+                index=False, mode='a', compression='gzip'))
+    print("Finished writing step!")
 
 
 # Main
@@ -84,8 +90,9 @@ def main(argv=None):
              ("sample_size", pa.float64())])
 
     #    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
-    for file_name in args.path:
+    for i, file_name in enumerate(args.path):
         print("Reading file " + file_name)
+        print("(file {}/{})".format(i, len(args.path)))
         results_list.append(pq.ParquetFile(file_name).read().to_pandas())
 
         # Output
