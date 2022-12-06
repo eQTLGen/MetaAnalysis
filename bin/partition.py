@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-
+import cPickle as pkl
 
 # Metadata
 __program__ = "CNV-caller"
@@ -47,7 +47,7 @@ __description__ = "{} is a program developed and maintained by {}. " \
 
 
 # Constants
-MAX_SIZE = 1*10**8
+MAX_SIZE = 2*10**8
 
 # Classes
 
@@ -56,12 +56,15 @@ def write_results(results_list, out):
     print("Writing results step")
     results = pd.concat(results_list)
     for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
-        print(index, phenotype, end="\r")
-        (phenotype_results
-            .drop('phenotype', inplace=False, axis=1)
-            .to_csv(
-                os.path.join(out, 'phenotype_{}.csv.gz').format(phenotype),
-                index=False, mode='a', compression='gzip'))
+        if index % 100 == 0:
+            print(index, phenotype, end="\r")
+        with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
+            pkl.dump(phenotype_results.drop('phenotype', inplace=False, axis=1), f)
+        #(phenotype_results
+        #    .drop('phenotype', inplace=False, axis=1)
+        #    .to_csv(
+        #        os.path.join(out, 'phenotype_{}.csv').format(phenotype),
+        #        index=False, mode='a'))
     print("Finished writing step!")
 
 

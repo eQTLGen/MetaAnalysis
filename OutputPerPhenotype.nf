@@ -27,7 +27,7 @@ Pay attention that it does not explicitly overwrite the output folder, so clean 
 //Default parameters
 params.input = ''
 params.outdir = ''
-params.chunks = 2
+params.chunks = 3
 
 log.info """=================================================
 HASE meta-analyzer v${workflow.manifest.version}"
