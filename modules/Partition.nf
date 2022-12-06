@@ -12,7 +12,7 @@ process Partition {
 
     shell:
     '''
-    mkdir "partitioned"
+    mkdir "partitioned_!{chunk}"
 
     python2 -u !{baseDir}/bin/partition.py \
     --path !{parquet}/node_!{chunk}_*_result.parquet \
