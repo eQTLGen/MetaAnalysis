@@ -92,7 +92,7 @@ def main(argv=None):
     #    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
     for i, file_name in enumerate(args.path):
         print("Reading file " + file_name)
-        print("(file {}/{})".format(i, len(args.path)))
+        print("(file {}/{})".format(i+1, len(args.path)))
         results_list.append(pq.ParquetFile(file_name).read().to_pandas())
 
         # Output
