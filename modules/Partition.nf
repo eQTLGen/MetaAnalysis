@@ -17,3 +17,4 @@ process Partition {
     --path !{parquet} \
     --out "partitioned"
     '''
+}

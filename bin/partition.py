@@ -56,7 +56,7 @@ def write_results(results_list, out):
     print("Writing results")
     results = pd.concat(results_list)
     for phenotype, phenotype_results in results.groupby(["phenotype"]):
-        phenotype_results.to_csv(os.path.join(out, 'phenotype_{}.csv').format(phenotype), mode='a', compression='gzip')
+        phenotype_results.to_csv(os.path.join(out, 'phenotype_{}.csv.gz').format(phenotype), mode='a', compression='gzip')
 
 
 # Main
