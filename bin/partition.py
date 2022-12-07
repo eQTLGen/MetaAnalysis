@@ -25,6 +25,7 @@ import os
 import sys
 import argparse
 import glob
+import time
 
 import numpy as np
 import pandas as pd
@@ -50,28 +51,25 @@ __description__ = "{} is a program developed and maintained by {}. " \
 # Constants
 MAX_SIZE = 8*10**8
 
-# Classes
 
 # Functions
 def write_results(results_list, out):
     print("Writing results step")
-    results = pa.concat_tables(results_list)
-    # for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
-    #     if index % 100 == 0:
-    #         print(index, phenotype, end="\r")
-    #     with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
-    #         pkl.dump(phenotype_results.drop('phenotype', inplace=False, axis=1), f)
+    results = pd.concat(results_list)
+    phenotypes = results["phenotype"].unique()
+    start = time.time()
+    for index, phenotype in enumerate(phenotypes):
+        if index % 100 == 0:
+            print(index, phenotype)
+            end = time.time()
+            print(end - start)
+        with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
+            pkl.dump(results.loc[results['phenotype'] == phenotype].drop('phenotype', inplace=False, axis=1), f)
         #(phenotype_results
         #    .drop('phenotype', inplace=False, axis=1)
         #    .to_csv(
         #        os.path.join(out, 'phenotype_{}.csv').format(phenotype),
         #        index=False, mode='a'))
-
-    pq.write_to_dataset(
-        table=results,
-        root_path=out,
-        partition_cols=["phenotype"]
-    )
     print("Finished writing step!")
 
 
@@ -116,7 +114,7 @@ def main(argv=None):
             file_name = row['file']
             print("Reading file " + file_name)
             print("(file {}/{})".format(i+1, len(phen_chunk)))
-            results_list.append(pq.ParquetFile(file_name).read())
+            results_list.append(pq.ParquetFile(file_name).read().to_pandas())
 
             # Output
             sum1 = sum([len(results) for results in results_list])
