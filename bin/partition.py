@@ -108,7 +108,7 @@ def main(argv=None):
             file_name = row['file']
             print("Reading file " + file_name)
             print("(file {}/{})".format(i+1, len(phen_chunk)))
-            results_list.append(pq.ParquetFile(file_name).read())
+            results_list.append(pq.ParquetFile(file_name).read().to_pandas())
 
             # Output
             sum1 = sum([len(results) for results in results_list])
