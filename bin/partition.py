@@ -48,7 +48,7 @@ __description__ = "{} is a program developed and maintained by {}. " \
 
 
 # Constants
-MAX_SIZE = 1*10**9
+MAX_SIZE = 3*10**8
 
 # Classes
 
@@ -99,10 +99,11 @@ def main(argv=None):
     file_df["rank"] = file_df.groupby("chunk")["iteration"].rank(method="dense")
     print(file_df)
 
-    results_list = list()
-
 #    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
     for group_id, phen_chunk in file_df.groupby(["rank"]):
+
+        results_list = list()
+
         for i, (index, row) in enumerate(phen_chunk.iterrows()):
             file_name = row['file']
             print("Reading file " + file_name)
@@ -113,21 +114,21 @@ def main(argv=None):
             sum1 = sum([len(results) for results in results_list])
             print(sum1)
             if sum1 > MAX_SIZE:
-                #write_results(results_list, args.out)
-                pq.write_to_dataset(
-                    table=pa.concat_tables(results_list),
-                    root_path=args.out,
-                    partition_cols=["phenotype"]
-                )
+                write_results(results_list, args.out)
+                # pq.write_to_dataset(
+                #     table=pa.concat_tables(results_list),
+                #     root_path=args.out,
+                #     partition_cols=["phenotype"]
+                # )
                 results_list = list()
 
-        #write_results(results_list, args.out)
+        write_results(results_list, args.out)
 
-        pq.write_to_dataset(
-            table=pa.concat_tables(results_list),
-            root_path=args.out,
-            partition_cols=["phenotype"]
-        )
+        # pq.write_to_dataset(
+        #     table=pa.concat_tables(results_list),
+        #     root_path=args.out,
+        #     partition_cols=["phenotype"]
+        # )
     return 0
 
 
