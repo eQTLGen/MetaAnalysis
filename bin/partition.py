@@ -65,6 +65,7 @@ def write_results(results_list, out):
          ("sample_size", pa.float64())])
 
     results = pd.concat(results_list)
+    start = time.time()
     for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
         if index % 100 == 0:
             print(index, phenotype)
