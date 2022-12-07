@@ -51,7 +51,7 @@ log.info "================================================="
 
 // Process input file paths
 
-parquet = Channel.fromPath(params.input)
+parquet = Channel.fromPath(params.input).collect()
 
 out = Channel.fromPath(params.outdir)
 
