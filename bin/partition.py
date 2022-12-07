@@ -48,7 +48,7 @@ __description__ = "{} is a program developed and maintained by {}. " \
 
 
 # Constants
-MAX_SIZE = 4*10**8
+MAX_SIZE = 1*10**9
 
 # Classes
 
