@@ -55,16 +55,26 @@ MAX_SIZE = 8*10**8
 # Functions
 def write_results(results_list, out):
     print("Writing results step")
+
+    pyarrow_schema = pa.schema(
+        [("cohort", pa.string()),
+         ("variant", pa.string()),
+         ("phenotype", pa.string()),
+         ("beta", pa.float64()),
+         ("standard_error", pa.float64()),
+         ("sample_size", pa.float64())])
+
     results = pd.concat(results_list)
-    phenotypes = results["phenotype"].unique()
-    start = time.time()
-    for index, phenotype in enumerate(phenotypes):
+    for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
         if index % 100 == 0:
             print(index, phenotype)
             end = time.time()
             print(end - start)
-        with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
-            pkl.dump(results.loc[results['phenotype'] == phenotype].drop('phenotype', inplace=False, axis=1), f)
+        #with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
+        #    pkl.dump(phenotype_results.drop('phenotype', inplace=False, axis=1), f)
+        pq.write_table(pa.Table.from_pandas(
+            phenotype_results.drop('phenotype', inplace=False, axis=1), pyarrow_schema),
+            os.path.join(out, 'phenotype_{}.parquet').format(phenotype))
         #(phenotype_results
         #    .drop('phenotype', inplace=False, axis=1)
         #    .to_csv(
