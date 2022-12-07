@@ -48,24 +48,30 @@ __description__ = "{} is a program developed and maintained by {}. " \
 
 
 # Constants
-MAX_SIZE = 3*10**8
+MAX_SIZE = 8*10**8
 
 # Classes
 
 # Functions
 def write_results(results_list, out):
     print("Writing results step")
-    results = pd.concat(results_list)
-    for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
-        if index % 100 == 0:
-            print(index, phenotype, end="\r")
-        with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
-            pkl.dump(phenotype_results.drop('phenotype', inplace=False, axis=1), f)
+    results = pa.concat_tables(results_list)
+    # for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
+    #     if index % 100 == 0:
+    #         print(index, phenotype, end="\r")
+    #     with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
+    #         pkl.dump(phenotype_results.drop('phenotype', inplace=False, axis=1), f)
         #(phenotype_results
         #    .drop('phenotype', inplace=False, axis=1)
         #    .to_csv(
         #        os.path.join(out, 'phenotype_{}.csv').format(phenotype),
         #        index=False, mode='a'))
+
+    pq.write_to_dataset(
+        table=results,
+        root_path=out,
+        partition_cols=["phenotype"]
+    )
     print("Finished writing step!")
 
 
@@ -96,7 +102,9 @@ def main(argv=None):
         file_struct['iteration'].append(int(splitted[4]))
 
     file_df = pd.DataFrame(file_struct)
-    file_df["rank"] = file_df.groupby("chunk")["iteration"].rank(method="dense")
+    file_df["rank"] = (
+        file_df.sort_values(by=['iteration'])
+        .groupby("chunk")["iteration"].rank(method="dense"))
     print(file_df)
 
 #    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
@@ -108,7 +116,7 @@ def main(argv=None):
             file_name = row['file']
             print("Reading file " + file_name)
             print("(file {}/{})".format(i+1, len(phen_chunk)))
-            results_list.append(pq.ParquetFile(file_name).read().to_pandas())
+            results_list.append(pq.ParquetFile(file_name).read())
 
             # Output
             sum1 = sum([len(results) for results in results_list])
