@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pyarrow.feather as feather
 import cPickle as pkl
 
 
@@ -73,9 +74,8 @@ def write_results(results_list, out):
             print(end - start)
         #with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
         #    pkl.dump(phenotype_results.drop('phenotype', inplace=False, axis=1), f)
-        pq.write_table(pa.Table.from_pandas(
-            phenotype_results.drop('phenotype', inplace=False, axis=1), pyarrow_schema),
-            os.path.join(out, 'phenotype_{}.parquet').format(phenotype))
+        feather.write_feather(phenotype_results.drop('phenotype', inplace=False, axis=1),
+            os.path.join(out, 'phenotype_{}.feather').format(phenotype))
         #(phenotype_results
         #    .drop('phenotype', inplace=False, axis=1)
         #    .to_csv(
