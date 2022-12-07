@@ -56,13 +56,9 @@ MAX_SIZE = 8*10**8
 def write_results(results_list, out):
     print("Writing results step")
 
-    pyarrow_schema = pa.schema(
-        [("cohort", pa.string()),
-         ("variant", pa.string()),
-         ("phenotype", pa.string()),
-         ("beta", pa.float64()),
-         ("standard_error", pa.float64()),
-         ("sample_size", pa.float64())])
+    schema = pa.schema([("variant", pa.string()), ("beta", pa.float64()),
+                             ("standard_error", pa.float64()), ("i_squared", pa.float64()),
+                             ("sample_size", pa.float64())])
 
     results = pd.concat(results_list)
     start = time.time()
@@ -74,7 +70,7 @@ def write_results(results_list, out):
         #with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
         #    pkl.dump(phenotype_results.drop('phenotype', inplace=False, axis=1), f)
         pq.write_table(pa.Table.from_pandas(
-            phenotype_results.drop('phenotype', inplace=False, axis=1), pyarrow_schema),
+            phenotype_results.drop('phenotype', inplace=False, axis=1), schema),
             os.path.join(out, 'phenotype_{}.parquet').format(phenotype))
         #(phenotype_results
         #    .drop('phenotype', inplace=False, axis=1)
