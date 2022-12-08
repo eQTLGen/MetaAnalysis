@@ -31,7 +31,6 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-import cPickle as pkl
 
 
 # Metadata
@@ -53,7 +52,7 @@ MAX_SIZE = 8*10**8
 
 
 # Functions
-def write_results(results_list, out):
+def write_results(results_list, out, group_id):
     print("Writing results step")
 
     schema = pa.schema([("variant", pa.string()), ("beta", pa.float64()),
@@ -63,20 +62,17 @@ def write_results(results_list, out):
     results = pd.concat(results_list)
     start = time.time()
     for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
+
         if index % 100 == 0:
             print(index, phenotype)
-            end = time.time()
-            print(end - start)
-        #with open(os.path.join(out, 'phenotype_{}.pkl').format(phenotype), 'a') as f:
-        #    pkl.dump(phenotype_results.drop('phenotype', inplace=False, axis=1), f)
+
+        partition_dir = os.path.join(out, 'phenotype_{}'.format(phenotype))
+        os.mkdir(partition_dir)
+
         pq.write_table(pa.Table.from_pandas(
             phenotype_results.drop('phenotype', inplace=False, axis=1), schema),
-            os.path.join(out, 'phenotype_{}.parquet').format(phenotype))
-        #(phenotype_results
-        #    .drop('phenotype', inplace=False, axis=1)
-        #    .to_csv(
-        #        os.path.join(out, 'phenotype_{}.csv').format(phenotype),
-        #        index=False, mode='a'))
+            os.path.join(partition_dir, 'results_{}.parquet').format(group_id))
+
     print("Finished writing step!")
 
 
@@ -110,9 +106,10 @@ def main(argv=None):
     file_df["rank"] = (
         file_df.sort_values(by=['iteration'])
         .groupby("chunk")["iteration"].rank(method="dense"))
+    file_df = file_df.astype({'rank':'int'})
     print(file_df)
 
-#    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
+    #    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
     for group_id, phen_chunk in file_df.groupby(["rank"]):
 
         results_list = list()
@@ -123,25 +120,9 @@ def main(argv=None):
             print("(file {}/{})".format(i+1, len(phen_chunk)))
             results_list.append(pq.ParquetFile(file_name).read().to_pandas())
 
-            # Output
-            sum1 = sum([len(results) for results in results_list])
-            print(sum1)
-            if sum1 > MAX_SIZE:
-                write_results(results_list, args.out)
-                # pq.write_to_dataset(
-                #     table=pa.concat_tables(results_list),
-                #     root_path=args.out,
-                #     partition_cols=["phenotype"]
-                # )
-                results_list = list()
+        # Output
+        write_results(results_list, args.out, group_id)
 
-        write_results(results_list, args.out)
-
-        # pq.write_to_dataset(
-        #     table=pa.concat_tables(results_list),
-        #     root_path=args.out,
-        #     partition_cols=["phenotype"]
-        # )
     return 0
 
 
