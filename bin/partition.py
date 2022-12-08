@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pyarrow.feather as feather
 
 
 # Metadata
@@ -72,6 +73,9 @@ def write_results(results_list, out, group_id):
         pq.write_table(pa.Table.from_pandas(
             phenotype_results.drop('phenotype', inplace=False, axis=1), schema),
             os.path.join(partition_dir, 'results_{}.parquet').format(group_id))
+
+        #feather.write_feather(phenotype_results.drop('phenotype', inplace=False, axis=1),
+        #    os.path.join(out, 'phenotype_{}.feather').format(phenotype))
 
     print("Finished writing step!")
 
