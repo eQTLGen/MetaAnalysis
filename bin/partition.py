@@ -49,7 +49,7 @@ __description__ = "{} is a program developed and maintained by {}. " \
 
 
 # Constants
-MAX_SIZE = 8*10**8
+MAX_SIZE = 2.5*10**8
 
 
 # Functions
@@ -70,12 +70,12 @@ def write_results(results_list, out, group_id):
         partition_dir = os.path.join(out, 'phenotype_{}'.format(phenotype))
         os.mkdir(partition_dir)
 
-        pq.write_table(pa.Table.from_pandas(
-            phenotype_results.drop('phenotype', inplace=False, axis=1), schema),
-            os.path.join(partition_dir, 'results_{}.parquet').format(group_id))
+        #pq.write_table(pa.Table.from_pandas(
+        #    phenotype_results.drop('phenotype', inplace=False, axis=1), schema),
+        #    os.path.join(partition_dir, 'results_{}.parquet').format(group_id))
 
-        #feather.write_feather(phenotype_results.drop('phenotype', inplace=False, axis=1),
-        #    os.path.join(out, 'phenotype_{}.feather').format(phenotype))
+        feather.write_feather(phenotype_results.drop('phenotype', inplace=False, axis=1),
+            os.path.join(out, 'phenotype_{}.feather').format(phenotype))
 
     print("Finished writing step!")
 
