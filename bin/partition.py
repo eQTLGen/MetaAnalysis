@@ -53,7 +53,7 @@ MAX_SIZE = 2.5*10**8
 
 
 # Functions
-def write_results(results_list, out, group_id):
+def write_results(results_list, out, out_id):
     print("Writing results step")
 
     schema = pa.schema([("variant", pa.string()), ("beta", pa.float64()),
@@ -61,21 +61,21 @@ def write_results(results_list, out, group_id):
                              ("sample_size", pa.float64())])
 
     results = pd.concat(results_list)
-    start = time.time()
     for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
 
         if index % 100 == 0:
             print(index, phenotype)
 
         partition_dir = os.path.join(out, 'phenotype_{}'.format(phenotype))
-        os.mkdir(partition_dir)
+        if not os.path.exists(partition_dir):
+            os.makedirs(partition_dir)
 
-        #pq.write_table(pa.Table.from_pandas(
-        #    phenotype_results.drop('phenotype', inplace=False, axis=1), schema),
-        #    os.path.join(partition_dir, 'results_{}.parquet').format(group_id))
+        pq.write_table(pa.Table.from_pandas(
+            phenotype_results.drop('phenotype', inplace=False, axis=1), schema),
+            os.path.join(partition_dir, 'results_{}.parquet').format(out_id))
 
-        feather.write_feather(phenotype_results.drop('phenotype', inplace=False, axis=1),
-            os.path.join(out, 'phenotype_{}.feather').format(phenotype))
+        #feather.write_feather(phenotype_results.drop('phenotype', inplace=False, axis=1),
+        #    os.path.join(out, 'phenotype_{}.feather').format(out_id))
 
     print("Finished writing step!")
 
@@ -113,6 +113,8 @@ def main(argv=None):
     file_df = file_df.astype({'rank':'int'})
     print(file_df)
 
+    out_index = 0
+
     #    for file_name in glob.glob(os.path.join(args.path, "*.parquet")):
     for group_id, phen_chunk in file_df.groupby(["rank"]):
 
@@ -124,8 +126,17 @@ def main(argv=None):
             print("(file {}/{})".format(i+1, len(phen_chunk)))
             results_list.append(pq.ParquetFile(file_name).read().to_pandas())
 
+            # Output
+            total_sum_lines = sum([len(results) for results in results_list])
+            print(total_sum_lines)
+            if total_sum_lines > MAX_SIZE:
+                write_results(results_list, args.out, out_index)
+                out_index += 1
+                results_list = list()
+
         # Output
-        write_results(results_list, args.out, group_id)
+        write_results(results_list, args.out, out_index)
+        out_index += 1
 
     return 0
 
