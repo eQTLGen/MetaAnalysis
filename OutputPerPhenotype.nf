@@ -53,8 +53,6 @@ log.info "================================================="
 
 parquet = Channel.fromPath(params.input).collect()
 
-out = Channel.fromPath(params.outdir)
-
 chunks = params.chunks
 chunk = Channel.from(1..chunks)
 
@@ -62,7 +60,7 @@ workflow {
 
 phenotypes = channel.from("ENSG00000004487", "ENSG00000010626", "ENSG00000028839", "ENSG00000059758", "ENSG00000180481")
 Partition(parquet, chunk)
-Combine(Partition.out.collect(), phenotypes, out)
+Combine(Partition.out.collect(), phenotypes)
 
 }
 
