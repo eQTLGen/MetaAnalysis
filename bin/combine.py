@@ -58,8 +58,8 @@ def main(argv=None):
         argv = sys.argv[1:]
     # Process input
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path')
-    parser.add_argument('--pheno')
+    parser.add_argument('--path', args='+')
+    parser.add_argument('--phenotype')
     parser.add_argument('--out')
 
     args = parser.parse_args(argv)
@@ -73,12 +73,29 @@ def main(argv=None):
          ("i_squared", pa.float64()),
          ("sample_size", pa.float64())])
 
-    pa_table = pq.ParquetDataset(args.path, schema=pyarrow_schema, filters=('phenotype', '=', args.pheno)).read()
+    results_list = list()
 
+    for chunk_index, chunk_path in enumerate(args.path):
+        phenotype_partition_glob = os.path.join(chunk_path, "phenotype_{}".format(args.phenotype), "*.parquet")
+        print("(chunk {}/{})".format(chunk_index, len(args.path)))
+
+        for i, (file_name) in enumerate(glob.glob(phenotype_partition_glob)):
+            print("Reading file " + file_name)
+            results_list.append(pq.ParquetFile(file_name).read())
+
+    print("Concatenating datasets")
+    results_concatenated = pa.concat_tables(results_list)
+
+    print("Appending phenotype column")
+    results_with_phenotype = results_concatenated.append_column(
+        'phenotype', args.phenotype, pyarrow_schema["phenotype"])
+
+    print("Writing dataset")
     pq.write_to_dataset(
-        table=pa_table,
+        table=results_with_phenotype,
         root_path=args.out,
-        partition_cols=["phenotype"]
+        partition_cols=["phenotype"],
+        schema=pyarrow_schema
     )
 
     return 0
