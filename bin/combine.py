@@ -61,6 +61,7 @@ def main(argv=None):
     parser.add_argument('--path', nargs='+')
     parser.add_argument('--phenotype')
     parser.add_argument('--out')
+    parser.add_argument('--ref')
 
     args = parser.parse_args(argv)
     # Perform method
@@ -90,9 +91,14 @@ def main(argv=None):
     results_with_phenotype = results_concatenated.append_column(
         'phenotype', pa.array([args.phenotype] * len(results_concatenated), pa.string()))
 
+    reference = pd.HDFStore(args.ref, 'r').reference
+    reference.rename(columns={'ID':'variant', 'CHR':'chromosome', 'bp':'bp'}, inplace=True)
+
+    results_positional = results_with_phenotype.join(reference.set_index('variant'), on='variant')
+
     print("Writing dataset")
     pq.write_to_dataset(
-        table=results_with_phenotype,
+        table=results_positional,
         root_path=args.out,
         partition_cols=["phenotype"])
 
