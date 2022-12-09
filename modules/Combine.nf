@@ -10,8 +10,8 @@ process Combine {
 
     shell:
     '''
-    python2 !{baseDir}/bin/combine.py \
-    --path !{parquet} \
+    python2 -u !{baseDir}/bin/combine.py \
+    --path !{partitioned} \
     --pheno !{phenotype} \
     --out !{out} \
     '''

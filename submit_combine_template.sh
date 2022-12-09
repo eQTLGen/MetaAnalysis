@@ -26,4 +26,5 @@ output_folder=../output/MetaAnalysisResultsPartitioned
 NXF_VER=21.10.6 ${nextflow_path}/nextflow run OutputPerPhenotype.nf \
 --input ${input_path} \
 --outdir ${output_folder} \
+-resume \
 -profile slurm,singularity
