@@ -21,7 +21,8 @@ nextflow_path=/gpfs/space/GI/eQTLGen/EstBB_testing/MetaAnalysis/tools
 set -f
 
 input_path='/gpfs/space/GI/eQTLGen/freeze1/eqtl_mapping/output/empirical_4GenPC20ExpPC_2022-11-14/MetaAnalysisResultsEncoded'
-output_folder=../output/MetaAnalysisResultsPartitioned
+#output_folder=../output/MetaAnalysisResultsPartitioned
+output_folder=../output/MetaAnalysisResultsPositionalB
 
 NXF_VER=21.10.6 ${nextflow_path}/nextflow run OutputPerPhenotype.nf \
 --input ${input_path} \

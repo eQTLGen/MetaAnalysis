@@ -72,7 +72,9 @@ def main(argv=None):
          ("beta", pa.float64()),
          ("standard_error", pa.float64()),
          ("i_squared", pa.float64()),
-         ("sample_size", pa.float64())])
+         ("sample_size", pa.float64()),
+         ("bp", pa.int32()), 
+         ("chromosome", pa.int8())])
 
     results_list = list()
 
@@ -89,17 +91,22 @@ def main(argv=None):
 
     print("Appending phenotype column")
     results_with_phenotype = results_concatenated.append_column(
-        'phenotype', pa.array([args.phenotype] * len(results_concatenated), pa.string()))
+        'phenotype', pa.array([args.phenotype] * len(results_concatenated), pa.string())).to_pandas()
 
     reference = pd.HDFStore(args.ref, 'r').reference
     reference.rename(columns={'ID':'variant', 'CHR':'chromosome', 'bp':'bp'}, inplace=True)
 
-    results_positional = results_with_phenotype.join(reference.set_index('variant'), on='variant')
+    print("Joining positional data")
+
+    results_positional = pa.Table.from_pandas(results_with_phenotype
+      .join(reference.set_index("variant"), on='variant')
+      .drop('variant', inplace=False, axis=1), pyarrow_schema)
 
     print("Writing dataset")
     pq.write_to_dataset(
         table=results_positional,
         root_path=args.out,
+        row_group_size=1*10**5,
         partition_cols=["phenotype"])
 
     return 0
