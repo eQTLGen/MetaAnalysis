@@ -53,7 +53,7 @@ MAX_SIZE = 2.5*10**8
 
 
 # Functions
-def write_results(results_list, out, out_id):
+def write_results(results_list, out, out_id, phenotype_list):
     print("Writing results step")
 
     schema = pa.schema([("variant", pa.string()), ("beta", pa.float64()),
@@ -62,6 +62,7 @@ def write_results(results_list, out, out_id):
 
     results = pd.concat(results_list)
     for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
+        phenotype_list.append(phenotype)
 
         if index % 100 == 0:
             print(index, phenotype)
@@ -88,6 +89,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', nargs='+')
     parser.add_argument('--out')
+    parser.add_argument('--out-list')
 
     args = parser.parse_args(argv)
     # Perform method
@@ -98,6 +100,8 @@ def main(argv=None):
     file_struct["file"] = list()
     file_struct["chunk"] = list()
     file_struct["iteration"] = list()
+
+    phenotype_list = list()
 
     for path in args.path:
         file_name = os.path.basename(path)
@@ -130,14 +134,17 @@ def main(argv=None):
             total_sum_lines = sum([len(results) for results in results_list])
             print(total_sum_lines)
             if total_sum_lines > MAX_SIZE:
-                write_results(results_list, args.out, out_index)
+                write_results(results_list, args.out, out_index, phenotype_list)
                 out_index += 1
                 results_list = list()
 
         # Output
-        write_results(results_list, args.out, out_index)
+        write_results(results_list, args.out, out_index, phenotype_list)
         out_index += 1
 
+    with open(args.out_list, 'w') as opened_out_list:
+        for line in phenotype_list:
+            opened_out_list.write("{}\n".format(line))
     return 0
 
 

@@ -8,7 +8,8 @@ process Partition {
       val chunk
 
     output:
-      path "partitioned_${chunk}"
+      path "partitioned_${chunk}", emit: partitioned
+      file "phenotypes.txt", emit: phenotypes
 
     shell:
     '''
@@ -16,6 +17,7 @@ process Partition {
 
     python2 -u !{baseDir}/bin/partition.py \
     --path !{parquet}/node_!{chunk}_*_result.parquet \
-    --out "partitioned_!{chunk}"
+    --out "partitioned_!{chunk}" \
+    --out-list "phenotypes.txt"
     '''
 }
