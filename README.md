@@ -50,6 +50,7 @@ Standard QC applies following filters, you can also adjust the settings:
   - Hardy-Weinberg disequilibrium P>1e-6
   - Imputation Mach R2>0.4
   - Call rate=1 (for imputed data this is always the case)
+  - MAC>10
 - Gene expression QC:
   - Per gene require that at least 80% of normalised and log2-transformed values are unique. This ensures that gene is expressed (majority of values are not 0) and shows at least some variability.
 - Covariates:
