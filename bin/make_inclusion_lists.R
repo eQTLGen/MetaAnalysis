@@ -22,7 +22,7 @@ HWE_thresh <- 1e-6
 MACH_R2_thresh <- 0.4
 CALL_thresh <- 1
 
-MAC_thresh <- 0
+MAC_thresh <- 10
 
 # You can adjust the gene QC thresholds here
 gene_uniq_thresh <- 0.8
@@ -75,7 +75,7 @@ het_gen_counts <- sub('(,.*?),.*', '\\1', snpqc$Genotype_Counts)
 snpqc$het_gen_counts <- as.numeric(str_replace(het_gen_counts, ".* ", ""))
 
 # Calculate MAC for each SNP
-mac <- snpqc[, .(MAC = min(c(hom1_gen_counts, hom2_gen_counts)) + 2 * het_gen_counts), by = .(ID)]
+mac <- snpqc[, .(MAC = 2 * min(c(hom1_gen_counts, hom2_gen_counts)) + het_gen_counts), by = .(ID)]
 
 # Calculate N
 N_split <- unlist(str_split(snpqc$Genotype_Counts[1], ", "))
