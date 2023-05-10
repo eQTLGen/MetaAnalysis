@@ -654,6 +654,7 @@ def main(argv=None):
     elif args.mode == 'meta-classic':
 
         # ARG_CHECKER.check(args,mode='meta-stage')
+        print("starting meta-classic")
 
         ##### Init data readers #####
         if args.derivatives is None:
@@ -663,6 +664,8 @@ def main(argv=None):
             mapper_chunk_size=MAPPER_CHUNK_SIZE, study_name=args.study_name, ref_name=args.ref_name,
             mapper_folder=args.mapper, encoded=args.encoded, cluster=args.cluster, node=args.node,
             snp_id_inc=args.snp_id_inc, snp_id_exc=args.snp_id_exc)
+
+        print("loaded mapper")
 
         # It appears to me that the pard list contains
         # partial derivatives matrices for every study
@@ -695,7 +698,9 @@ def main(argv=None):
 
         meta_pard = MetaParData(partial_derivatives_folders, args.study_name,
                                 protocol=protocol,
-                                allow_missingness=args.allow_missingness)
+                                allow_missingness=args.allow_missingness,
+                                match_covs=False)
+        # Do nothing with cov order
 
         is_no_b4_present_in_partial_derivatives = np.sum(b4_presence_per_study) == 0
         if not is_no_b4_present_in_partial_derivatives:
@@ -740,12 +745,12 @@ def main(argv=None):
         covariate_indices = None
         if args.covariate_indices:
 
-            covariate_indices_df = pd.read_csv(
-                args.covariate_indices,
-                sep="\t", header=None, dtype=str, index_col=0)
-
-            covariate_indices = covariate_indices_df.apply(
-                lambda col: col.astype(np.float), axis=1).T.to_dict('list')
+            covariate_indices = dict()
+            with open(args.covariate_indices) as opened:
+                for line in opened:
+                    split_line = line.strip().split("\t")
+                    covariate_indices[split_line[0]] = (
+                        np.array([int(index) for index in split_line[1:]]))
 
             for key, indices in covariate_indices.items():
                 if np.min(indices) < 1:
@@ -754,8 +759,6 @@ def main(argv=None):
                         'Covariate indices must start at 1 or above.'.format(
                             key
                         ))
-
-                covariate_indices[key] = np.array(indices).astype(int)
 
         variants_to_log = None
         pheno_to_log = None

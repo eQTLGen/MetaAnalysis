@@ -7,12 +7,9 @@
 nextflow.enable.dsl = 2
 
 // import modules
-include { REGENIE_STEP_1 } from './modules/regenie-step-1'
-include { REGENIE_STEP_2 } from './modules/regenie-step-2'
-include { MERGE_ZIP } from './modules/merge-zip'
-include { PLOT } from './modules/manhattan-plot'
-
-
+include { MetaAnalyseCohorts } from './modules/MetaAnalyseCohorts'
+include { PerCohortAnalysis } from './modules/PerCohortAnalysis'
+include { SubsetGenesInclusion } from './modules/SubsetGenesInclusion'
 
 def helpmessage() {
 
@@ -40,6 +37,7 @@ Mandatory arguments:
 
 Optional arguments:
 --th             T-statistic threshold for writing out the results. Defaults to 0.
+--genes_percohort File with genes to output cohort specific results for.
 --chunks         In how many chunks to run the analysis. Defaults to 100.
 
 """.stripIndent()
@@ -47,13 +45,13 @@ Optional arguments:
 }
 
 //Default parameters
-params.mastertable = ''
+//params.mastertable = ''
+params.genes_percohort = ''
 params.outputpath = ''
 params.mapperpath = ''
 params.th = 0
 params.covariates = ''
 params.chunks = 100
-params.permuted = 'no'
 
 log.info """=================================================
 HASE meta-analyzer v${workflow.manifest.version}"
@@ -69,6 +67,7 @@ summary['Config Profile']                           = workflow.profile
 summary['Container Engine']                         = workflow.containerEngine
 if(workflow.containerEngine) summary['Container']   = workflow.container
 summary['Master table']                             = params.mastertable
+summary['Genes per cohort']                         = params.genes_percohort
 summary['Input mapper path']                        = params.mapperpath
 summary['Output directory']                         = params.outdir
 summary['T-statistic threshold']                    = params.th
@@ -78,11 +77,8 @@ summary['Nr. of chunks']                            = params.chunks
 log.info summary.collect { k,v -> "${k.padRight(21)}: $v" }.join("\n")
 log.info "================================================="
 
-workflow {
-
 
 // Process input file paths
-mastertable = file(params.mastertable)
 
 cohort_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
@@ -112,7 +108,7 @@ encoded_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
     .map{row -> [ "${row.encoded}" ]}
-    .collect()
+    .collect().view()
     
 snp_inclusion_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
@@ -126,22 +122,38 @@ gene_inclusion_ch = Channel.fromPath(params.mastertable)
     .map{row -> [ "${row.gene_inclusion}" ]}
     .collect()
 
+if (params.genes_percohort) {
+  gene_percohort_ch = Channel.fromPath(params.genes_percohort)
+   .ifEmpty { error "Cannot find master table from: ${params.genes_percohort}" }
+   .collect()
+}
+
 mapper = file(params.mapperpath)
+
+test_ch = Channel.fromPath(params.mastertable)
 
 // Optional arguments
 th = params.th
 chunks = params.chunks
 
-if (params.covariates) { 
-  covariate_file = file(params.covariates) 
+if (params.covariates) {
+  covariate_file = file(params.covariates)
 } else {covariate_file = Channel.value("")}
 
 chunk = Channel.from(1..chunks)
 
-MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch, 
-gene_inclusion_ch, covariate_file, genotype_ch, expression_ch, 
-partial_derivatives_ch, cohort_ch)
-
+workflow {
+  if (params.genes_percohort) {
+    subset_gene_inclusion_ch = SubsetGenesInclusion(gene_inclusion_ch, gene_percohort_ch)
+    PerCohortAnalysis(chunk, mapper, th, chunks, snp_inclusion_ch,
+      subset_gene_inclusion_ch.collect(), gene_percohort_ch, covariate_file, genotype_ch, expression_ch,
+      partial_derivatives_ch, cohort_ch, encoded_ch)
+  }
+  else {
+    MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch,
+      gene_inclusion_ch, covariate_file, genotype_ch, expression_ch,
+      partial_derivatives_ch, cohort_ch, encoded_ch)
+  }
 }
 
 workflow.onComplete {

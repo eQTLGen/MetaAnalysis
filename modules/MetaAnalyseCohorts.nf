@@ -1,28 +1,28 @@
-#!/bin/bash nextflow 
+#!/bin/bash nextflow
 
 
 process MetaAnalyseCohorts {
 
-    tag "chunk $chunk"
+    //tag "chunk $chunk"
 
     publishDir "${params.outdir}", mode: 'copy'
 
     input:
       val chunk
       path mapper
-      value th
-      value nr_chunks
+      val th
+      val nr_chunks
       path snp_inclusion
       path gene_inclusion
-      path covariate_filtering 
+      path covariate_filtering
       path genotype, stageAs: "genotypes_???"
       path expression, stageAs: "expression_???"
       path partial_derivatives, stageAs: "pd_???"
-      value cohort
+      val cohort
       val encoded
 
     output:
-      path 'MetaAnalysisResultsEncoded/*.parquet' into MetaAnalysisResultsEncoded
+      path 'MetaAnalysisResultsEncoded/*.parquet'
 
     shell:
     '''
@@ -30,7 +30,7 @@ process MetaAnalyseCohorts {
     export NUMEXPR_NUM_THREADS=1
     export OMP_NUM_THREADS=1
 
-    echo !{snp_inclusion} 
+    echo !{snp_inclusion}
 
     cohort=$(echo !{cohort} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
     encoded=$(echo !{encoded} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
@@ -59,6 +59,6 @@ process MetaAnalyseCohorts {
     -cluster "y" \
     -snp_id_inc ${snp_inclusion} \
     -ph_id_inc ${gene_inclusion} \
-    !{covariate_filtering}
+    -ci !{covariate_filtering}
     '''
 }
