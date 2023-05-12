@@ -13,7 +13,7 @@ process Combine {
       path "phenotype*"
 
     shell:
-    '''
+    '''as
     # Combining all parquet files for a specific phenotype
 
     python2 -u !{baseDir}/bin/combine.py \

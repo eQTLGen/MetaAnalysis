@@ -60,7 +60,7 @@ workflow {
 
 phenotypes = channel.from("ENSG00000004487", "ENSG00000010626", "ENSG00000028839", "ENSG00000059758", "ENSG00000180481")
 Partition(parquet, chunk)
-Partition.out.map.splitText().collect().unique().view()
+Partition.out.splitText().collect().unique().view()
 Combine(Partition.out.partitioned.collect(), phenotypes)
 
 }

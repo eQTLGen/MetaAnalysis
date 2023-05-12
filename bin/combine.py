@@ -73,8 +73,13 @@ def main(argv=None):
          ("standard_error", pa.float64()),
          ("i_squared", pa.float64()),
          ("sample_size", pa.float64()),
-         ("bp", pa.int32()), 
-         ("chromosome", pa.int8())])
+         ("chromosome", pa.uint8())])
+
+    variant_reference = (
+        pd.read_csv(args.ref, compression = 'gzip', sep = ' ')
+        .drop(["allele1", "allele2", "str_allele1", "str_allele2"], axis=1)
+        .rename({"ID": "variant", "bp": "bp", "CHR": "chromosome"}, axis=1)
+        .set_index("variant"))
 
     results_list = list()
 

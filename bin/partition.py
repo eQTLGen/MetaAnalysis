@@ -75,9 +75,6 @@ def write_results(results_list, out, out_id, phenotype_list):
             phenotype_results.drop('phenotype', inplace=False, axis=1), schema),
             os.path.join(partition_dir, 'results_{}.parquet').format(out_id))
 
-        #feather.write_feather(phenotype_results.drop('phenotype', inplace=False, axis=1),
-        #    os.path.join(out, 'phenotype_{}.feather').format(out_id))
-
     print("Finished writing step!")
 
 
