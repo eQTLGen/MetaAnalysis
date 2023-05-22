@@ -198,11 +198,10 @@ class ClassicMetaAnalyser:
             axis=0)
 
         # Expected effect size deviations from the mean
-        expected_effect_size_deviations = len(self.cohort_list) - 1
+        degrees_of_freedom = (np.sum(~np.isnan(effect_size_deviations_from_mean), axis=0) - 1)
         with np.errstate(divide='ignore'):
             i_squared = (
-                ((effect_size_deviations
-                  - expected_effect_size_deviations)
+                ((effect_size_deviations - degrees_of_freedom)
                  / effect_size_deviations
                  ) * 100)
 

@@ -13,7 +13,7 @@ process MetaAnalyseCohorts {
       val th
       val nr_chunks
       path snp_inclusion
-      path gene_inclusion
+      path gene_inclusion, stageAs: "gene_inclusion_???"
       path covariate_filtering
       path genotype, stageAs: "genotypes_???"
       path expression, stageAs: "expression_???"
