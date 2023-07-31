@@ -47,7 +47,7 @@ Optional arguments:
 //Default parameters
 params.mastertable = ''
 params.genes_percohort = ''
-params.outputpath = ''
+params.outdir = ''
 params.mapperpath = ''
 params.th = 0
 params.covariates = ''
@@ -141,19 +141,26 @@ if (params.covariates) {
 } else {covariate_file = Channel.value("")}
 
 chunk = Channel.from(1..chunks)
+parquet = Channel.fromPath(new File(params.outdir, 'MetaAnalysisResultsEncoded')).collect()
 
 workflow {
   if (params.genes_percohort) {
     subset_gene_inclusion_ch = SubsetGenesInclusion(gene_inclusion_ch, gene_percohort_ch)
-    PerCohortAnalysis(chunk, mapper, th, chunks, snp_inclusion_ch,
+    MetaAnalysisResult = PerCohortAnalysis(chunk, mapper, th, chunks, snp_inclusion_ch,
       subset_gene_inclusion_ch.collect(), gene_percohort_ch, covariate_file, genotype_ch, expression_ch,
       partial_derivatives_ch, cohort_ch, encoded_ch)
   }
+
   else {
-    MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch,
+    MetaAnalysisResult = MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch,
       gene_inclusion_ch, covariate_file, genotype_ch, expression_ch,
       partial_derivatives_ch, cohort_ch, encoded_ch)
   }
+
+  Partition(parquet, MetaAnalysisResult.chunk)
+  Partition.out.splitText().collect().unique().view()
+  Combine(Partition.out.partitioned.collect(), phenotypes)
+
 }
 
 workflow.onComplete {

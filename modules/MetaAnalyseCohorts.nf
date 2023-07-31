@@ -22,7 +22,8 @@ process MetaAnalyseCohorts {
       val encoded
 
     output:
-      path 'MetaAnalysisResultsEncoded/*.parquet'
+      path 'MetaAnalysisResultsEncoded/*.parquet', emit: parquet
+      val chunk, emit: chunk
 
     shell:
     '''
