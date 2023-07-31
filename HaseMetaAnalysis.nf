@@ -47,6 +47,7 @@ Optional arguments:
 //Default parameters
 params.mastertable = ''
 params.genes_percohort = ''
+params.gene_filter = ''
 params.outdir = ''
 params.mapperpath = ''
 params.th = 0
@@ -124,7 +125,13 @@ gene_inclusion_ch = Channel.fromPath(params.mastertable)
 
 if (params.genes_percohort) {
   gene_percohort_ch = Channel.fromPath(params.genes_percohort)
-   .ifEmpty { error "Cannot find master table from: ${params.genes_percohort}" }
+   .ifEmpty { error "Cannot find gene per cohort from: ${params.genes_percohort}" }
+   .collect()
+}
+
+if (params.gene_filter) {
+  gene_filter_ch = Channel.fromPath(params.gene_filter)
+   .ifEmpty { error "Cannot find gene filter from: ${params.gene_filter}" }
    .collect()
 }
 
@@ -144,10 +151,18 @@ chunk = Channel.from(1..chunks)
 parquet = Channel.fromPath(new File(params.outdir, 'MetaAnalysisResultsEncoded')).collect()
 
 workflow {
+
   if (params.genes_percohort) {
     subset_gene_inclusion_ch = SubsetGenesInclusion(gene_inclusion_ch, gene_percohort_ch)
     MetaAnalysisResult = PerCohortAnalysis(chunk, mapper, th, chunks, snp_inclusion_ch,
       subset_gene_inclusion_ch.collect(), gene_percohort_ch, covariate_file, genotype_ch, expression_ch,
+      partial_derivatives_ch, cohort_ch, encoded_ch)
+  }
+
+  else if (params.gene_filter) {
+    subset_gene_inclusion_ch = SubsetGenesInclusion(gene_inclusion_ch, gene_filter_ch)
+    MetaAnalysisResult = MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch,
+      subset_gene_inclusion_ch.collect(), covariate_file, genotype_ch, expression_ch,
       partial_derivatives_ch, cohort_ch, encoded_ch)
   }
 

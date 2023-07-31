@@ -63,3 +63,4 @@ process MetaAnalyseCohorts {
     -ci !{covariate_filtering}
     '''
 }
+
