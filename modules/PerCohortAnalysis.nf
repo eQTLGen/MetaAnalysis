@@ -3,9 +3,7 @@
 
 process PerCohortAnalysis {
 
-    //tag "chunk $chunk"
-
-    publishDir "${params.outdir}", mode: 'copy'
+    tag {"chunk $chunk"}
 
     input:
       val chunk
@@ -23,8 +21,7 @@ process PerCohortAnalysis {
       val encoded
 
     output:
-      path 'MetaAnalysisResultsEncoded/*.parquet', emit: parquet
-      val chunk, emit: chunk
+      set val(chunk), path('MetaAnalysisResultsEncoded/*.parquet')
 
     shell:
     '''

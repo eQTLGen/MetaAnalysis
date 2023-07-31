@@ -3,9 +3,7 @@
 
 process MetaAnalyseCohorts {
 
-    //tag "chunk $chunk"
-
-    publishDir "${params.outdir}", mode: 'copy'
+    tag {"chunk $chunk"}
 
     input:
       val chunk
@@ -22,8 +20,7 @@ process MetaAnalyseCohorts {
       val encoded
 
     output:
-      path 'MetaAnalysisResultsEncoded/*.parquet', emit: parquet
-      val chunk, emit: chunk
+      set val(chunk), path('MetaAnalysisResultsEncoded/*.parquet')
 
     shell:
     '''
@@ -62,5 +59,18 @@ process MetaAnalyseCohorts {
     -ph_id_inc ${gene_inclusion} \
     -ci !{covariate_filtering}
     '''
+}
+
+
+process CleanMetaAnalyseCohorts {
+    tag {CleanMetaAnalyseCohorts}
+
+    input:
+        set val(id), val(files_list)
+
+    script:
+    """
+    clean_work_files.sh "${files_list[0]}"
+    """
 }
 

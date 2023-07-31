@@ -148,7 +148,6 @@ if (params.covariates) {
 } else {covariate_file = Channel.value("")}
 
 chunk = Channel.from(1..chunks)
-parquet = Channel.fromPath(new File(params.outdir, 'MetaAnalysisResultsEncoded')).collect()
 
 workflow {
 
@@ -172,9 +171,11 @@ workflow {
       partial_derivatives_ch, cohort_ch, encoded_ch)
   }
 
-  Partition(parquet, MetaAnalysisResult.chunk)
-  Partition.out.splitText().collect().unique().view()
+  Partition(MetaAnalysisResult)
+  CleanMetaAnalyseCohorts(MetaAnalysisResult.mix(Partition.signal).groupTuple(size: 2).view())
   Combine(Partition.out.partitioned.collect(), phenotypes)
+  CleanPartition(Combine.signal.concat(Partition.out.partitioned.collect()))
+  CleanCombine(Combine.out.parquet)
 
 }
 
