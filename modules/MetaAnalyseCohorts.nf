@@ -1,9 +1,9 @@
-#!/bin/bash nextflow 
+#!/bin/bash nextflow
 
 
 process MetaAnalyseCohorts {
 
-    tag "chunk $chunk"
+    //tag "chunk $chunk"
 
     publishDir "${params.outdir}", mode: 'copy'
 
@@ -14,7 +14,7 @@ process MetaAnalyseCohorts {
       val nr_chunks
       path snp_inclusion
       path gene_inclusion
-      path covariate_filtering 
+      path covariate_filtering
       path genotype, stageAs: "genotypes_???"
       path expression, stageAs: "expression_???"
       path partial_derivatives, stageAs: "pd_???"
@@ -30,7 +30,7 @@ process MetaAnalyseCohorts {
     export NUMEXPR_NUM_THREADS=1
     export OMP_NUM_THREADS=1
 
-    echo !{snp_inclusion} 
+    echo !{snp_inclusion}
 
     cohort=$(echo !{cohort} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
     encoded=$(echo !{encoded} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')

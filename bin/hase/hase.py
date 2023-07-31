@@ -654,6 +654,7 @@ def main(argv=None):
     elif args.mode == 'meta-classic':
 
         # ARG_CHECKER.check(args,mode='meta-stage')
+        print("starting meta-classic")
 
         ##### Init data readers #####
         if args.derivatives is None:
@@ -663,6 +664,8 @@ def main(argv=None):
             mapper_chunk_size=MAPPER_CHUNK_SIZE, study_name=args.study_name, ref_name=args.ref_name,
             mapper_folder=args.mapper, encoded=args.encoded, cluster=args.cluster, node=args.node,
             snp_id_inc=args.snp_id_inc, snp_id_exc=args.snp_id_exc)
+
+        print("loaded mapper")
 
         # It appears to me that the pard list contains
         # partial derivatives matrices for every study

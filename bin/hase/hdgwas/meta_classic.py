@@ -24,6 +24,7 @@ class ClassicMetaAnalyser:
 
         self.pheno_full_log = (
             pheno_full_log if pheno_full_log is not None else np.array([]))
+        print(self.pheno_full_log)
         self.variants_full_log = (
             variants_full_log if variants_full_log is not None else np.array([]))
         self.t_statistic_threshold = t_statistic_threshold
@@ -280,13 +281,46 @@ class ClassicMetaAnalyser:
         variant_selection = np.isin(variant_names, self.variants_full_log)
         phenotype_selection = np.isin(phenotype_names, self.pheno_full_log)
 
+        print(variant_selection)
+        print(phenotype_selection)
+
         # We rely on the methods below to return a 3d matrix wherein the
         # 0th dimension represents the studies / cohorts, the
         # 1st dimension represents the variants, and the
         # 2nd dimension represents the phenotypes.
+
+        
         effects_to_report = np.dot(
             variant_selection[:, None],
             phenotype_selection[None, :])
+
+        per_cohort_threshold = 1 * 10 ** 9
+        if len(self.pheno_full_log) == 0:
+            print("No phenotypes provided for per cohort results. "
+                  + "Trying to write per cohort results for all phenotypes.")
+            phenotype_selection = np.array([True] * len(phenotype_names))
+
+            effects_to_report = np.dot(
+                variant_selection[:, None],
+                phenotype_selection[None, :])
+            
+            if np.sum(effects_to_report) > per_cohort_threshold:
+                Warning("Refusing to write over {} effects for each cohort.".format(per_cohort_threshold))
+                return 
+
+        elif len(self.variants_full_log) == 0:
+            variant_selection = np.array([True] * len(variant_names))
+
+            effects_to_report = np.dot(
+                variant_selection[:, None],
+                phenotype_selection[None, :])
+            
+            if np.sum(effects_to_report) > per_cohort_threshold:
+                Warning("Refusing to write over {} effects for each cohort.".format(per_cohort_threshold))
+                return
+
+        print("Per cohort effects to report")
+        print(effects_to_report)
 
         if not np.any(effects_to_report):
             return

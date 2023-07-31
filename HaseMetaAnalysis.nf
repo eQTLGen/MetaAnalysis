@@ -8,6 +8,8 @@ nextflow.enable.dsl = 2
 
 // import modules
 include { MetaAnalyseCohorts } from './modules/MetaAnalyseCohorts'
+include { PerCohortAnalysis } from './modules/PerCohortAnalysis'
+include { SubsetGenesInclusion } from './modules/SubsetGenesInclusion'
 
 def helpmessage() {
 
@@ -35,6 +37,7 @@ Mandatory arguments:
 
 Optional arguments:
 --th             T-statistic threshold for writing out the results. Defaults to 0.
+--genes_percohort File with genes to output cohort specific results for.
 --chunks         In how many chunks to run the analysis. Defaults to 100.
 
 """.stripIndent()
@@ -43,12 +46,12 @@ Optional arguments:
 
 //Default parameters
 params.mastertable = ''
-params.outdir = ''
+params.genes_percohort = ''
+params.outputpath = ''
 params.mapperpath = ''
 params.th = 0
 params.covariates = ''
 params.chunks = 100
-params.permuted = 'no'
 
 log.info """=================================================
 HASE meta-analyzer v${workflow.manifest.version}"
@@ -64,6 +67,7 @@ summary['Config Profile']                           = workflow.profile
 summary['Container Engine']                         = workflow.containerEngine
 if(workflow.containerEngine) summary['Container']   = workflow.container
 summary['Master table']                             = params.mastertable
+summary['Genes per cohort']                         = params.genes_percohort
 summary['Input mapper path']                        = params.mapperpath
 summary['Output directory']                         = params.outdir
 summary['T-statistic threshold']                    = params.th
@@ -118,6 +122,12 @@ gene_inclusion_ch = Channel.fromPath(params.mastertable)
     .map{row -> [ "${row.gene_inclusion}" ]}
     .collect()
 
+if (params.genes_percohort) {
+  gene_percohort_ch = Channel.fromPath(params.genes_percohort)
+   .ifEmpty { error "Cannot find master table from: ${params.genes_percohort}" }
+   .collect()
+}
+
 mapper = file(params.mapperpath)
 
 test_ch = Channel.fromPath(params.mastertable)
@@ -126,18 +136,24 @@ test_ch = Channel.fromPath(params.mastertable)
 th = params.th
 chunks = params.chunks
 
-if (params.covariates) { 
-  covariate_file = file(params.covariates) 
+if (params.covariates) {
+  covariate_file = file(params.covariates)
 } else {covariate_file = Channel.value("")}
 
 chunk = Channel.from(1..chunks)
 
 workflow {
-
-MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch, 
-gene_inclusion_ch, covariate_file, genotype_ch, expression_ch, 
-partial_derivatives_ch, cohort_ch, encoded_ch)
-
+  if (params.genes_percohort) {
+    subset_gene_inclusion_ch = SubsetGenesInclusion(gene_inclusion_ch, gene_percohort_ch)
+    PerCohortAnalysis(chunk, mapper, th, chunks, snp_inclusion_ch,
+      subset_gene_inclusion_ch.collect(), gene_percohort_ch, covariate_file, genotype_ch, expression_ch,
+      partial_derivatives_ch, cohort_ch, encoded_ch)
+  }
+  else {
+    MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch,
+      gene_inclusion_ch, covariate_file, genotype_ch, expression_ch,
+      partial_derivatives_ch, cohort_ch, encoded_ch)
+  }
 }
 
 workflow.onComplete {
