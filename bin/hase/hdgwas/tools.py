@@ -997,6 +997,7 @@ def get_identifier_array(object):
                 )).T
 
                 id_p = np.append(id_p, new_sample_ids, 0)
+                #print(id_p)
         else:
             id_p = object.get_id()
     return id_p.astype(np.str)
@@ -1010,6 +1011,7 @@ def get_intersecting_individual_indices(datasets):
     indices = dict()
     # Get the identifiers from the datasets
     identifiers = {key: get_identifier_array(dataset) for key, dataset in datasets.items()}
+    #print(identifiers)
     # Get the keys from the identifiers
     keys = list(identifiers.keys())
     # Start the intersections

@@ -673,9 +673,14 @@ def main(argv=None):
 
         with Timer() as t:
             for i, j in enumerate(args.derivatives):
+                print(i,j)
                 partial_derivatives_folders.append(Reader('partial'))
                 partial_derivatives_folders[i].start(j, study_name=args.study_name[i])
                 partial_derivatives_folders[i].folder.load(into_memory=False)
+
+        print(partial_derivatives_folders)
+        print([i.folder.name for i in partial_derivatives_folders])
+        print([i.folder._data.metadata['id'].shape for i in partial_derivatives_folders])
 
         print("Time used to load partial derivatives is {}s".format(t.secs))
 
@@ -718,12 +723,18 @@ def main(argv=None):
                                   exclude=args.ph_id_exc,
                                   allow_missingness=args.allow_missingness)
 
+        #print(phen[1].folder._data.id)
+
         gen = []
         with Timer() as t:
             for i, j in enumerate(args.genotype):
                 gen.append(Reader('genotype'))
                 gen[i].start(j, hdf5=args.hdf5, study_name=args.study_name[i], ID=False)
         print("Time to set gen {}s".format(t.secs))
+
+        #print(gen[1].folder._data.id)
+
+        #print(partial_derivatives_folders[1].folder._data.metadata['id'])
 
         # Create a dictionary with the datasets for obtaining
         # the indices of shared identifiers
@@ -739,7 +750,7 @@ def main(argv=None):
                 [i.folder._data.metadata['id'].shape[0] for i in partial_derivatives_folders]):
             raise ValueError(
                 'Partial Derivatives covariates have different number of subjects {} than genotype and phenotype {}'.format(
-                    row_index["covariates"].shape[0],
+                    row_index["partial_derivatives"].shape[0],
                     np.sum([i.folder._data.metadata['id'].shape[0] for i in partial_derivatives_folders])))
 
         covariate_indices = None

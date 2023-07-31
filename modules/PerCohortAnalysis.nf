@@ -1,7 +1,7 @@
-#!/bin/bash nextflow
+#!/bin/bash nextflow 
 
 
-process MetaAnalyseCohorts {
+process PerCohortAnalysis {
 
     //tag "chunk $chunk"
 
@@ -13,8 +13,9 @@ process MetaAnalyseCohorts {
       val th
       val nr_chunks
       path snp_inclusion
-      path gene_inclusion, stageAs: "gene_inclusion_???"
-      path covariate_filtering
+      path gene_inclusion
+      path gene_per_cohort
+      path covariate_filtering 
       path genotype, stageAs: "genotypes_???"
       path expression, stageAs: "expression_???"
       path partial_derivatives, stageAs: "pd_???"
@@ -22,8 +23,7 @@ process MetaAnalyseCohorts {
       val encoded
 
     output:
-      path 'MetaAnalysisResultsEncoded/*.parquet', emit: parquet
-      val chunk, emit: chunk
+      path 'MetaAnalysisResultsEncoded/*.parquet'
 
     shell:
     '''
@@ -43,7 +43,7 @@ process MetaAnalyseCohorts {
     snp_inclusion=$(echo !{snp_inclusion} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
     gene_inclusion=$(echo !{gene_inclusion} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
 
-    python2 !{baseDir}/bin/hase/hase.py \
+    python2 -u !{baseDir}/bin/hase/hase.py \
     -study_name ${cohort} \
     -g ${genotype} \
     -ph ${expression} \
@@ -60,6 +60,7 @@ process MetaAnalyseCohorts {
     -cluster "y" \
     -snp_id_inc ${snp_inclusion} \
     -ph_id_inc ${gene_inclusion} \
+    -ph_id_log !{gene_per_cohort} \
     -ci !{covariate_filtering}
     '''
 }
