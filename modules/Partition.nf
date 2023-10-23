@@ -4,12 +4,12 @@
 process Partition {
 
     input:
-      set val(chunk), path(parquet)
+      tuple val(chunk), path(parquet)
 
     output:
       path "partitioned_${chunk}", emit: partitioned
-      file "phenotypes.txt", emit: phenotypes
-      set val(chunk), val(1), emit: signal
+      path "phenotypes.txt", emit: phenotypes
+      tuple val(chunk), val(1), emit: signal
 
     shell:
     '''
@@ -27,7 +27,7 @@ process CleanPartition {
     tag {CleanPartition}
 
     input:
-        set val(chunk), val(files_list)
+        tuple val(chunk), val(files_list)
 
     script:
     """

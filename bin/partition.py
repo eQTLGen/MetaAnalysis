@@ -52,15 +52,24 @@ __description__ = "{} is a program developed and maintained by {}. " \
 MAX_SIZE = 2.5*10**8
 
 
-# Functions
-def write_results(results_list, out, out_id, phenotype_list):
-    print("Writing results step")
-
-    schema = pa.schema([("variant", pa.string()), ("beta", pa.float64()),
+SCHEMA_DEFAULT = pa.schema([("variant", pa.string()), ("beta", pa.float64()),
                              ("standard_error", pa.float64()), ("i_squared", pa.float64()),
                              ("sample_size", pa.float64())])
 
+
+SCHEMA_PER_COHORT = pa.schema(["cohort", pa.string()), ("variant", pa.string()), ("beta", pa.float64()),
+                             ("standard_error", pa.float64()),
+                             ("sample_size", pa.float64())])
+
+
+def write_results(results_list, out, out_id, phenotype_list):
+    print("Writing results step")
+
     results = pd.concat(results_list)
+
+    per_cohort = "cohort" in results.columns
+    schema = SCHEMA_PER_COHORT if per_cohort else SCHEMA_DEFAULT
+
     for index, (phenotype, phenotype_results) in enumerate(results.groupby(["phenotype"])):
         phenotype_list.append(phenotype)
 
@@ -72,8 +81,8 @@ def write_results(results_list, out, out_id, phenotype_list):
             os.makedirs(partition_dir)
 
         pq.write_table(pa.Table.from_pandas(
-            phenotype_results.drop('phenotype', inplace=False, axis=1), schema),
-            os.path.join(partition_dir, 'results_{}.parquet').format(out_id))
+            phenotype_results.drop(groupby_columns, inplace=False, axis=1), schema),
+            os.path.join(partition_dir, 'results_{}{}.parquet').format(out_id, "_percohort" if per_cohort else ""))
 
     print("Finished writing step!")
 

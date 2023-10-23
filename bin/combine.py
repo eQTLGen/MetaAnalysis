@@ -75,6 +75,16 @@ def main(argv=None):
          ("sample_size", pa.float64()),
          ("chromosome", pa.uint8())])
 
+    pyarrow_schema_per_cohort = pa.schema(
+        [("cohort", pa.string()),
+         ("variant", pa.string()),
+         ("phenotype", pa.string()),
+         ("beta", pa.float64()),
+         ("standard_error", pa.float64()),
+         ("i_squared", pa.float64()),
+         ("sample_size", pa.float64()),
+         ("chromosome", pa.uint8())])
+
     variant_reference = (
         pd.read_csv(args.ref, compression = 'gzip', sep = ' ')
         .drop(["allele1", "allele2", "str_allele1", "str_allele2"], axis=1)
@@ -102,17 +112,18 @@ def main(argv=None):
     reference.rename(columns={'ID':'variant', 'CHR':'chromosome', 'bp':'bp'}, inplace=True)
 
     print("Joining positional data")
+    per_cohort = "cohort" in results_concatenated.columns
 
     results_positional = pa.Table.from_pandas(results_with_phenotype
       .join(reference.set_index("variant"), on='variant')
-      .drop('variant', inplace=False, axis=1), pyarrow_schema)
+      .drop('variant', inplace=False, axis=1), pyarrow_schema_per_cohort if per_cohort else pyarrow_schema)
 
     print("Writing dataset")
     pq.write_to_dataset(
         table=results_positional,
         root_path=args.out,
         row_group_size=1*10**5,
-        partition_cols=["phenotype"])
+        partition_cols=["phenotype", "cohort"] if per_cohort else ["phenotype"])
 
     return 0
 

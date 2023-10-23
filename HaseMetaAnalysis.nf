@@ -7,9 +7,11 @@
 nextflow.enable.dsl = 2
 
 // import modules
-include { MetaAnalyseCohorts } from './modules/MetaAnalyseCohorts'
+include { MetaAnalyseCohorts; CleanMetaAnalyseCohorts } from './modules/MetaAnalyseCohorts'
 include { PerCohortAnalysis } from './modules/PerCohortAnalysis'
 include { SubsetGenesInclusion } from './modules/SubsetGenesInclusion'
+include { Partition; Partition as PartitionPerCohort; CleanPartition } from './modules/Partition'
+include { Combine; Combine as CombinePerCohort; CleanCombine } from './modules/Combine'
 
 def helpmessage() {
 
@@ -92,25 +94,25 @@ genotype_ch = Channel.fromPath(params.mastertable)
     .splitCsv(header: true, sep: '\t', strip: true)
     .map{row -> [ row.genotype ]}
     .collect()
-    
+
 expression_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
     .map{row -> [ row.expression ]}
     .collect()
-    
+
 partial_derivatives_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
     .map{row -> [ row.partial_derivatives ]}
     .collect()
-    
+
 encoded_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
     .map{row -> [ "${row.encoded}" ]}
     .collect().view()
-    
+
 snp_inclusion_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
@@ -153,9 +155,14 @@ workflow {
 
   if (params.genes_percohort) {
     subset_gene_inclusion_ch = SubsetGenesInclusion(gene_inclusion_ch, gene_percohort_ch)
-    MetaAnalysisResult = PerCohortAnalysis(chunk, mapper, th, chunks, snp_inclusion_ch,
+    PerCohortAnalysisResult = PerCohortAnalysis(chunk, mapper, th, chunks, snp_inclusion_ch,
       subset_gene_inclusion_ch.collect(), gene_percohort_ch, covariate_file, genotype_ch, expression_ch,
       partial_derivatives_ch, cohort_ch, encoded_ch)
+
+    MetaAnalysisResult = PerCohortAnalysisResult.meta_analysed
+    PartitionPerCohort(PerCohortAnalysisResult.per_cohort)
+    CombinePerCohort(PartitionPerCohort.out.partitioned.collect(), PartitionPerCohort.out.phenotypes.splitText().collect().unique())
+
   }
 
   else if (params.gene_filter) {
@@ -172,9 +179,9 @@ workflow {
   }
 
   Partition(MetaAnalysisResult)
-  CleanMetaAnalyseCohorts(MetaAnalysisResult.mix(Partition.signal).groupTuple(size: 2).view())
-  Combine(Partition.out.partitioned.collect(), phenotypes)
-  CleanPartition(Combine.signal.concat(Partition.out.partitioned.collect()))
+  CleanMetaAnalyseCohorts(MetaAnalysisResult.mix(Partition.out.signal).groupTuple(size: 2).view())
+  Combine(Partition.out.partitioned.collect(), Partition.out.phenotypes.splitText().collect().unique())
+  CleanPartition(Combine.out.signal.concat(Partition.out.partitioned.collect()))
   CleanCombine(Combine.out.parquet)
 
 }

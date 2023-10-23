@@ -20,7 +20,7 @@ process MetaAnalyseCohorts {
       val encoded
 
     output:
-      set val(chunk), path('MetaAnalysisResultsEncoded/*.parquet')
+      tuple val(chunk), path('MetaAnalysisResultsEncoded/*.parquet')
 
     shell:
     '''
@@ -66,7 +66,7 @@ process CleanMetaAnalyseCohorts {
     tag {CleanMetaAnalyseCohorts}
 
     input:
-        set val(id), val(files_list)
+        tuple val(id), val(files_list)
 
     script:
     """

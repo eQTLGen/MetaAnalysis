@@ -13,7 +13,7 @@ process PerCohortAnalysis {
       path snp_inclusion
       path gene_inclusion
       path gene_per_cohort
-      path covariate_filtering 
+      path covariate_filtering
       path genotype, stageAs: "genotypes_???"
       path expression, stageAs: "expression_???"
       path partial_derivatives, stageAs: "pd_???"
@@ -21,7 +21,8 @@ process PerCohortAnalysis {
       val encoded
 
     output:
-      set val(chunk), path('MetaAnalysisResultsEncoded/*.parquet')
+      tuple val(chunk), path('MetaAnalysisResultsEncoded/*.result.parquet'), emit: meta_analysed
+      tuple val(chunk), path('MetaAnalysisResultsEncoded/*.per_cohort.parquet'), emit: per_cohort
 
     shell:
     '''

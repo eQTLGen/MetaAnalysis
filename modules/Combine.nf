@@ -10,7 +10,7 @@ process Combine {
       val phenotype
 
     output:
-      set val(phenotype), path("phenotype*"), emit: parquet
+      tuple val(phenotype), path("phenotype*"), emit: parquet
       val 1, emit: signal
 
     shell:
@@ -29,7 +29,7 @@ process CleanCombine {
     tag {CleanCombine}
 
     input:
-        set val(phenotype), val(files_list)
+        tuple val(phenotype), val(files_list)
 
     script:
     """
