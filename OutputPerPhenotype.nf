@@ -7,7 +7,8 @@
 nextflow.enable.dsl = 2
 
 // import modules
-include { Partition } from './modules/Partition'
+include { OldPartitionPerCohort } from './modules/Partition'
+include { ListPhenotypes } from './modules/ListPhenotypes'
 include { Combine } from './modules/Combine'
 
 def helpmessage() {
@@ -52,16 +53,16 @@ log.info "================================================="
 // Process input file paths
 
 parquet = Channel.fromPath(params.input).collect()
+variant_reference_ch = Channel.fromPath(params.reference).collect()
 
 chunks = params.chunks
 chunk = Channel.from(1..chunks)
 
 workflow {
 
-phenotypes = channel.from("ENSG00000004487", "ENSG00000010626", "ENSG00000028839", "ENSG00000059758", "ENSG00000180481")
-Partition(parquet, chunk)
-Partition.out.splitText().collect().unique().view()
-Combine(Partition.out.partitioned.collect(), phenotypes)
+OldPartitionPerCohort(parquet, chunk)
+ListPhenotypes(OldPartitionPerCohort.out.phenotypes.collect())
+Combine(OldPartitionPerCohort.out.partitioned.collect(), ListPhenotypes.out.splitText( by: 100, file: true ), variant_reference_ch)
 
 }
 

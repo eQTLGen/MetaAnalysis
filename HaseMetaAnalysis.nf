@@ -11,6 +11,7 @@ include { MetaAnalyseCohorts; CleanMetaAnalyseCohorts } from './modules/MetaAnal
 include { PerCohortAnalysis } from './modules/PerCohortAnalysis'
 include { SubsetGenesInclusion } from './modules/SubsetGenesInclusion'
 include { Partition; Partition as PartitionPerCohort; CleanPartition } from './modules/Partition'
+include { ListPhenotypes } from './modules/ListPhenotypes'
 include { Combine; Combine as CombinePerCohort; CleanCombine } from './modules/Combine'
 
 def helpmessage() {
@@ -141,6 +142,8 @@ mapper = file(params.mapperpath)
 
 test_ch = Channel.fromPath(params.mastertable)
 
+// variant_reference_ch = Channel.fromPath(params.reference).collect()
+
 // Optional arguments
 th = params.th
 chunks = params.chunks
@@ -161,7 +164,8 @@ workflow {
 
     MetaAnalysisResult = PerCohortAnalysisResult.meta_analysed
     PartitionPerCohort(PerCohortAnalysisResult.per_cohort)
-    CombinePerCohort(PartitionPerCohort.out.partitioned.collect(), PartitionPerCohort.out.phenotypes.splitText().collect().unique())
+    ListPhenotypes(PartitionPerCohort.out.phenotypes.collect())
+    CombinePerCohort(PartitionPerCohort.out.partitioned.collect(), ListPhenotypes.out.splitText( by: 100, file: true ), variant_reference_ch)
 
   }
 
@@ -178,11 +182,11 @@ workflow {
       partial_derivatives_ch, cohort_ch, encoded_ch)
   }
 
-  Partition(MetaAnalysisResult)
-  CleanMetaAnalyseCohorts(MetaAnalysisResult.mix(Partition.out.signal).groupTuple(size: 2).view())
-  Combine(Partition.out.partitioned.collect(), Partition.out.phenotypes.splitText().collect().unique())
-  CleanPartition(Combine.out.signal.concat(Partition.out.partitioned.collect()))
-  CleanCombine(Combine.out.parquet)
+  //Partition(MetaAnalysisResult)
+  //CleanMetaAnalyseCohorts(MetaAnalysisResult.mix(Partition.out.signal).groupTuple(size: 2).view())
+  //Combine(Partition.out.partitioned.collect(), Partition.out.phenotypes.splitText().collect().unique())
+  //CleanPartition(Combine.out.signal.concat(Partition.out.partitioned.collect()))
+  //CleanCombine(Combine.out.parquet)
 
 }
 

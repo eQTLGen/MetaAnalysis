@@ -23,6 +23,31 @@ process Partition {
 }
 
 
+process OldPartitionPerCohort {
+    cache true
+
+    input:
+      path parquet
+      val chunk
+
+    output:
+      path "partitioned_${chunk}", emit: partitioned
+      path "phenotypes.txt", emit: phenotypes
+
+    shell:
+    '''
+    set +f
+
+    mkdir "partitioned_!{chunk}"
+
+    python3 -u !{baseDir}/bin/partition.py \
+    --path !{parquet}/node_!{chunk}_*_per_cohort.parquet \
+    --out "partitioned_!{chunk}" \
+    --out-list "phenotypes.txt"
+    '''
+}
+
+
 process CleanPartition {
     tag {CleanPartition}
 

@@ -2,15 +2,18 @@
 
 
 process ListPhenotypes {
+    cache true
+    publishDir "${params.outdir}", mode: 'copy', overwrite: true
+    executor 'local'
 
     input:
-      path partitioned
+      path 'phenotype_list?.txt'
 
     output:
-      path "phenotypes.txt"
+      path "phenotypes_unique.txt"
 
     shell:
     '''
-    ls !{partitioned}/phenotype_* | basename | awk 'fs="_" { print $2 }' > "phenotypes.txt"
+    sort phenotype_list*.txt | uniq > "phenotypes_unique.txt"
     '''
 }

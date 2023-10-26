@@ -70,7 +70,7 @@ process CleanMetaAnalyseCohorts {
 
     script:
     """
-    clean_work_files.sh "${files_list[0]}"
+    #clean_work_files.sh "${files_list[0]}"
     """
 }
 
