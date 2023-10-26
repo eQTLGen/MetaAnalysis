@@ -4,6 +4,7 @@
 process Combine {
     cache true
     publishDir "${params.outdir}/eqtls", mode: 'copy', overwrite: true
+    container 'quay.io/cawarmerdam/eqtlgen_phase2:latest'
 
     input:
       path partitioned

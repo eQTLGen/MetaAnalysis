@@ -90,7 +90,7 @@ def write_results(results_list, out, out_id, phenotype_list):
 
         pq.write_table(pa.Table.from_pandas(
             phenotype_results.drop("phenotype", inplace=False, axis=1), schema),
-            os.path.join(partition_dir, 'results_{}{}.parquet').format(out_id, "_percohort" if per_cohort else ""))
+            os.path.join(partition_dir, 'results_{}{}.parquet').format(out_id, "_percohort" if per_cohort else "_meta"))
 
     print("Finished writing step!")
 

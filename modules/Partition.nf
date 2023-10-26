@@ -2,6 +2,7 @@
 
 
 process Partition {
+    container 'quay.io/cawarmerdam/eqtlgen_phase2:latest'
 
     input:
       tuple val(chunk), path(parquet)
@@ -25,6 +26,7 @@ process Partition {
 
 process OldPartitionPerCohort {
     cache true
+    container 'quay.io/cawarmerdam/eqtlgen_phase2:latest'
 
     input:
       path parquet
