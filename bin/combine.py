@@ -59,31 +59,12 @@ def main(argv=None):
     # Process input
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', nargs='+')
-    parser.add_argument('--phenotype')
+    parser.add_argument('--phenotypes')
     parser.add_argument('--out')
     parser.add_argument('--ref')
 
     args = parser.parse_args(argv)
     # Perform method
-
-    pyarrow_schema = pa.schema(
-        [("variant", pa.string()),
-         ("phenotype", pa.string()),
-         ("beta", pa.float64()),
-         ("standard_error", pa.float64()),
-         ("i_squared", pa.float64()),
-         ("sample_size", pa.float64()),
-         ("chromosome", pa.uint8())])
-
-    pyarrow_schema_per_cohort = pa.schema(
-        [("cohort", pa.string()),
-         ("variant", pa.string()),
-         ("phenotype", pa.string()),
-         ("beta", pa.float64()),
-         ("standard_error", pa.float64()),
-         ("i_squared", pa.float64()),
-         ("sample_size", pa.float64()),
-         ("chromosome", pa.uint8())])
 
     variant_reference = (
         pd.read_csv(args.ref, compression = 'gzip', sep = ' ')
@@ -91,39 +72,51 @@ def main(argv=None):
         .rename({"ID": "variant", "bp": "bp", "CHR": "chromosome"}, axis=1)
         .set_index("variant"))
 
-    results_list = list()
+    variant_table = pa.Table.from_pandas(variant_reference)
 
-    for chunk_index, chunk_path in enumerate(args.path):
-        phenotype_partition_glob = os.path.join(chunk_path, "phenotype_{}".format(args.phenotype), "*.parquet")
-        print("(chunk {}/{})".format(chunk_index, len(args.path)))
+    print(variant_reference.head())
+    print(variant_reference.dtypes)
 
-        for i, (file_name) in enumerate(glob.glob(phenotype_partition_glob)):
-            print("Reading file " + file_name)
-            results_list.append(pq.ParquetFile(file_name).read())
+    phenotypes = list()
 
-    print("Concatenating datasets")
-    results_concatenated = pa.concat_tables(results_list)
+    with open(args.phenotypes) as opened:
+        for line in opened:
+            phenotypes.append(line.strip())
 
-    print("Appending phenotype column")
-    results_with_phenotype = results_concatenated.append_column(
-        'phenotype', pa.array([args.phenotype] * len(results_concatenated), pa.string())).to_pandas()
+    for phenotype in phenotypes:
+        print(phenotype)
 
-    reference = pd.HDFStore(args.ref, 'r').reference
-    reference.rename(columns={'ID':'variant', 'CHR':'chromosome', 'bp':'bp'}, inplace=True)
+        results_list_phen = list()
+        for chunk_index, chunk_path in enumerate(args.path):
+            phenotype_partition_glob = os.path.join(chunk_path, "phenotype_{}".format(phenotype), "*.parquet")
+            print("(chunk {}/{})".format(chunk_index, len(args.path)))
 
-    print("Joining positional data")
-    per_cohort = "cohort" in results_concatenated.columns
+            for i, (file_name) in enumerate(glob.glob(phenotype_partition_glob)):
+                print("Reading file " + file_name)
+                results_list_phen.append(pq.ParquetFile(file_name).read())
 
-    results_positional = pa.Table.from_pandas(results_with_phenotype
-      .join(reference.set_index("variant"), on='variant')
-      .drop('variant', inplace=False, axis=1), pyarrow_schema_per_cohort if per_cohort else pyarrow_schema)
+        print("Concatenating datasets")
+        results_concatenated = pa.concat_tables(results_list_phen)
 
-    print("Writing dataset")
-    pq.write_to_dataset(
-        table=results_positional,
-        root_path=args.out,
-        row_group_size=1*10**5,
-        partition_cols=["phenotype", "cohort"] if per_cohort else ["phenotype"])
+        print("Is data per cohort?")
+        per_cohort = "cohort" in results_concatenated.columns
+
+        print("Appending phenotype column")
+        results_with_phenotype = results_concatenated.append_column(
+            'phenotype', pa.array([phenotype] * len(results_concatenated), pa.string()))
+
+        print("Appending chromosome column")
+        results_with_chromosome = (results_with_phenotype
+                                   .join(variant_table, "variant", right_keys="variant")
+                                   .sort_by([("chromosome", "ascending"), ("bp", "ascending")])
+                                   .drop(["bp"]))
+
+        print("Writing dataset")
+        pq.write_to_dataset(
+            table=results_with_chromosome,
+            root_path=args.out,
+            partition_cols=["phenotype", "cohort"] if per_cohort else ["phenotype"],
+            max_rows_per_group=524288)
 
     return 0
 

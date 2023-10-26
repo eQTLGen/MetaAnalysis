@@ -32,15 +32,15 @@ process PerCohortAnalysis {
 
     echo !{snp_inclusion}
 
-    cohort=$(echo !{cohort} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
-    encoded=$(echo !{encoded} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
+    cohort=!{cohort.join(" ")}
+    encoded=!{encoded.join(" ")}
 
-    genotype=$(echo !{genotype} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
-    expression=$(echo !{expression} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
-    partial_derivatives=$(echo !{partial_derivatives} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
+    genotype=!{genotype.join(" ")}
+    expression=!{expression.join(" ")}
+    partial_derivatives=!{partial_derivatives.join(" ")}
 
-    snp_inclusion=$(echo !{snp_inclusion} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
-    gene_inclusion=$(echo !{gene_inclusion} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
+    snp_inclusion=!{snp_inclusion.join(" ")}
+    gene_inclusion=!{gene_inclusion.join(" ")}
 
     python2 -u !{baseDir}/bin/hase/hase.py \
     -study_name ${cohort} \
