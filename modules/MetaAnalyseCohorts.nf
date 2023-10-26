@@ -61,7 +61,6 @@ process MetaAnalyseCohorts {
     '''
 }
 
-
 process CleanMetaAnalyseCohorts {
     tag {CleanMetaAnalyseCohorts}
 

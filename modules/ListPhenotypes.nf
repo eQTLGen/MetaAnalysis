@@ -11,6 +11,6 @@ process ListPhenotypes {
 
     shell:
     '''
-    ls !{partitioned}/phenotype_* | basename | awk 'fs="_" { print $2 }' > "phenotypes.txt"
+    sort phenotype_list*.txt | uniq > "phenotypes_unique.txt"
     '''
 }

@@ -59,7 +59,7 @@ def main(argv=None):
     # Process input
     parser = argparse.ArgumentParser()
     parser.add_argument('--path', nargs='+')
-    parser.add_argument('--phenotype')
+    parser.add_argument('--phenotypes')
     parser.add_argument('--out')
     parser.add_argument('--ref')
 
@@ -119,6 +119,7 @@ def main(argv=None):
             max_rows_per_group=524288)
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

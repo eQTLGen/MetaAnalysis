@@ -2,12 +2,13 @@
 
 
 process Combine {
-
-    publishDir "${params.outdir}", mode: 'copy', overwrite: true
+    cache true
+    publishDir "${params.outdir}/eqtls", mode: 'copy', overwrite: true
 
     input:
       path partitioned
       val phenotype
+      path reference
 
     output:
       tuple val(phenotype), path("phenotype*"), emit: parquet
@@ -16,12 +17,14 @@ process Combine {
     shell:
     '''
     # Combining all parquet files for a specific phenotype
+    # Allow multiple phenotypes to be processed in one go
+    # Merge with reference for chrom to quickly be able to select variants in a specific chromosome
 
-    python2 -u !{baseDir}/bin/combine.py \
+    python3 -u !{baseDir}/bin/combine.py \
     --path !{partitioned} \
     --pheno !{phenotype} \
     --out "." \
-    --ref "!{baseDir}/bin/hase/data/1000G-30x.ref_info.h5"
+    --ref !{reference}
     '''
 }
 
