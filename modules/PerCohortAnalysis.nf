@@ -45,7 +45,7 @@ process PerCohortAnalysis {
     partial_derivatives=!{partial_derivatives.join(" ")}
 
     snp_inclusion=!{snp_inclusion.join(" ")}
-    gene_inclusion=!{gene_inclusion.collect { "intersect_$gene_inclusion_file" }.join(" ")}
+    gene_inclusion=!{gene_inclusion.collect { filename -> "intersect_$filename" }.join(" ")}
 
     python2 -u !{baseDir}/bin/hase/hase.py \
     -study_name ${cohort} \
