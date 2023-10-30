@@ -40,12 +40,12 @@ process PerCohortAnalysis {
     cohort=!{cohort.join(" ")}
     encoded=!{encoded.join(" ")}
 
-    genotype=!{genotype.join(" ")}
-    expression=!{expression.join(" ")}
-    partial_derivatives=!{partial_derivatives.join(" ")}
+    genotype=!{genotype.name.join(" ")}
+    expression=!{expression.name.join(" ")}
+    partial_derivatives=!{partial_derivatives.name.join(" ")}
 
-    snp_inclusion=!{snp_inclusion.join(" ")}
-    gene_inclusion=!{gene_inclusion.collect { filename -> "intersect_$filename" }.join(" ")}
+    snp_inclusion=!{snp_inclusion.name.join(" ")}
+    gene_inclusion=!{gene_inclusion.name.collect { filename -> "intersect_$filename" }.join(" ")}
 
     python2 -u !{baseDir}/bin/hase/hase.py \
     -study_name ${cohort} \
