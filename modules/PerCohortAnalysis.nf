@@ -32,7 +32,7 @@ process PerCohortAnalysis {
 
     echo !{genes.join("\n")} > gene_chunk.txt
 
-    for gene_inclusion_file in !{gene_inclusion.join(" ")}; do
+    for gene_inclusion_file in !{gene_inclusion.join(' ')}; do
       echo "ID" > "intersect_${gene_inclusion_file}"
       comm -12 gene_chunk.txt | sort) <(sort ${gene_inclusion_file}) >> "intersect_${gene_inclusion_file}"
     done
@@ -45,7 +45,7 @@ process PerCohortAnalysis {
     partial_derivatives=!{partial_derivatives.name.join(" ")}
 
     snp_inclusion=!{snp_inclusion.name.join(" ")}
-    gene_inclusion=!{gene_inclusion.name.collect { filename -> "intersect_$filename" }.join(" ")}
+    gene_inclusion=!{gene_inclusion.name.collect { filename -> 'intersect_$filename' }.join(' ')}
 
     python2 -u !{baseDir}/bin/hase/hase.py \
     -study_name ${cohort} \
