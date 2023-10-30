@@ -1,4 +1,0 @@
-[submodule "bin/hase"]
-	path = bin/hase
-	url = https://github.com/CAWarmerdam/hase.git
-	branch = light
