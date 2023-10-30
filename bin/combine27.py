@@ -51,6 +51,41 @@ __description__ = "{} is a program developed and maintained by {}. " \
 # Classes
 
 # Functions
+def _combine(filters, partition_cols, path):
+    results_dataset = pq.ParquetDataset(
+        path, validate_schema=True,
+        filters=filters).read()
+    print("Writing dataset")
+    pq.write_to_dataset(
+        table=results_dataset,
+        root_path=path,
+        existing_data_behavior='delete_matching',
+        partition_cols=partition_cols,
+        max_rows_per_group=524288)
+
+
+def combine_per_cohort(path, phenotypes, cohorts):
+    partition_cols = ["phenotype".decode("utf8"), "cohort".decode("utf8")]
+
+    for cohort in cohorts:
+        print(cohort)
+        for phenotype in phenotypes:
+            print(phenotype)
+
+            filters = [("phenotype".decode("utf8"), "=", phenotype.decode("utf8")),
+                       ("cohort".decode("utf8"), "=", cohort.decode("utf8"))]
+            _combine(filters, partition_cols, path)
+
+
+def combine_meta(path, phenotypes):
+    partition_cols = ["phenotype".decode("utf8")]
+
+    for phenotype in phenotypes:
+        print(phenotype)
+        filters = [("phenotype".decode("utf8"), "=", phenotype.decode("utf8"))]
+
+        _combine(filters, partition_cols, path)
+
 
 # Main
 def main(argv=None):
@@ -58,55 +93,17 @@ def main(argv=None):
         argv = sys.argv[1:]
     # Process input
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', nargs='+')
-    parser.add_argument('--phenotypes')
-    parser.add_argument('--out')
-    parser.add_argument('--ref')
+    parser.add_argument('--path')
+    parser.add_argument('--phenotypes', nargs="+")
+    parser.add_argument('--cohorts', nargs="+", required=False, default=None)
 
     args = parser.parse_args(argv)
     # Perform method
 
-    variant_reference = (
-        pd.read_csv(args.ref, compression = 'gzip', sep = ' ')
-        .drop(["allele1", "allele2", "str_allele1", "str_allele2"], axis=1)
-        .rename({"ID": "variant", "bp": "bp", "CHR": "chromosome"}, axis=1)
-        .set_index("variant"))
-
-    variant_table = pa.Table.from_pandas(variant_reference)
-
-    print(variant_reference.head())
-    print(variant_reference.dtypes)
-
-    phenotypes = list()
-
-    with open(args.phenotypes) as opened:
-        for line in opened:
-            phenotypes.append(line.strip())
-
-    for phenotype in phenotypes:
-        print(phenotype)
-
-        results_list_phen = list()
-        for chunk_index, chunk_path in enumerate(args.path):
-            phenotype_partition_glob = os.path.join(chunk_path, "phenotype_{}".format(phenotype), "*.parquet")
-            print("(chunk {}/{})".format(chunk_index, len(args.path)))
-
-            for i, (file_name) in enumerate(glob.glob(phenotype_partition_glob)):
-                print("Reading file " + file_name)
-                results_list_phen.append(pq.ParquetDataset(parquet_dataset, filters=[("phenotype".decode("utf8"), "=", )]).read())
-
-        print("Concatenating datasets")
-        results_concatenated = pa.concat_tables(results_list_phen)
-
-        print("Is data per cohort?")
-        per_cohort = "cohort" in results_concatenated.columns
-
-        print("Writing dataset")
-        pq.write_to_dataset(
-            table=results_with_chromosome,
-            root_path=args.out,
-            partition_cols=["phenotype", "cohort"] if per_cohort else ["phenotype"],
-            max_rows_per_group=524288)
+    if args.cohorts is not None:
+        combine_per_cohort(args.path, args.phenotypes, args.cohorts)
+    else:
+        combine_meta(args.path, args.phenotypes)
 
     return 0
 

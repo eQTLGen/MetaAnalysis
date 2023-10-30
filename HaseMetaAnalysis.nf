@@ -55,7 +55,7 @@ params.outdir = ''
 params.mapperpath = ''
 params.th = 0
 params.covariates = ''
-params.chunks = 100
+params.gene_chunk_size = 100
 
 log.info """=================================================
 HASE meta-analyzer v${workflow.manifest.version}"
@@ -84,58 +84,28 @@ log.info "================================================="
 
 // Process input file paths
 
-cohort_ch = Channel.fromPath(params.mastertable)
+input_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.cohort ]}
-    .collect()
-
-genotype_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.genotype ]}
-    .collect()
-
-expression_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.expression ]}
-    .collect()
-
-partial_derivatives_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.partial_derivatives ]}
-    .collect()
-
-encoded_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.encoded}" ]}
-    .collect().view()
-
-snp_inclusion_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.snp_inclusion}" ]}
-    .collect()
-
-gene_inclusion_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.gene_inclusion}" ]}
+    .map{row -> [ row.cohort,
+                  row.encoded,
+                  row.genotype,
+                  row.expression,
+                  row.partial_derivatives,
+                  row.snp_inclusion,
+                  row.gene_inclusion ]}
     .collect()
 
 if (params.genes_percohort) {
   gene_percohort_ch = Channel.fromPath(params.genes_percohort)
    .ifEmpty { error "Cannot find gene per cohort from: ${params.genes_percohort}" }
-   .collect()
+   .collate(gene_chunk_size)
 }
 
 if (params.gene_filter) {
   gene_filter_ch = Channel.fromPath(params.gene_filter)
    .ifEmpty { error "Cannot find gene filter from: ${params.gene_filter}" }
-   .collect()
+   .collate(gene_chunk_size)
 }
 
 mapper = file(params.mapperpath)
@@ -152,41 +122,16 @@ if (params.covariates) {
   covariate_file = file(params.covariates)
 } else {covariate_file = Channel.value("")}
 
-chunk = Channel.from(1..chunks)
-
 workflow {
 
   if (params.genes_percohort) {
-    subset_gene_inclusion_ch = SubsetGenesInclusion(gene_inclusion_ch, gene_percohort_ch)
-    PerCohortAnalysisResult = PerCohortAnalysis(chunk, mapper, th, chunks, snp_inclusion_ch,
-      subset_gene_inclusion_ch.collect(), gene_percohort_ch, covariate_file, genotype_ch, expression_ch,
-      partial_derivatives_ch, cohort_ch, encoded_ch)
-
-    MetaAnalysisResult = PerCohortAnalysisResult.meta_analysed
-    PartitionPerCohort(PerCohortAnalysisResult.per_cohort)
-    ListPhenotypes(PartitionPerCohort.out.phenotypes.collect())
-    CombinePerCohort(PartitionPerCohort.out.partitioned.collect(), ListPhenotypes.out.splitText( by: 100, file: true ), variant_reference_ch)
-
+    PerCohortAnalysisResult = PerCohortAnalysisPerGene(th, gene_percohort_ch, mapper, covariate_file, input_ch)
   }
 
   else if (params.gene_filter) {
-    subset_gene_inclusion_ch = SubsetGenesInclusion(gene_inclusion_ch, gene_filter_ch)
-    MetaAnalysisResult = MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch,
-      subset_gene_inclusion_ch.collect(), covariate_file, genotype_ch, expression_ch,
-      partial_derivatives_ch, cohort_ch, encoded_ch)
-  }
+    MetaAnalysisResult = MetaAnalyseCohortsPerGene(th, gene_filter_ch, mapper, covariate_file, input_ch)
 
-  else {
-    MetaAnalysisResult = MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch,
-      gene_inclusion_ch, covariate_file, genotype_ch, expression_ch,
-      partial_derivatives_ch, cohort_ch, encoded_ch)
   }
-
-  //Partition(MetaAnalysisResult)
-  //CleanMetaAnalyseCohorts(MetaAnalysisResult.mix(Partition.out.signal).groupTuple(size: 2).view())
-  //Combine(Partition.out.partitioned.collect(), Partition.out.phenotypes.splitText().collect().unique())
-  //CleanPartition(Combine.out.signal.concat(Partition.out.partitioned.collect()))
-  //CleanCombine(Combine.out.parquet)
 
 }
 
