@@ -12,9 +12,9 @@ process MetaAnalyseCohortsPerGene {
             val(encoded),
             path(genotype, stageAs: "genotypes_???"),
             path(expression, stageAs: "expression_???"),
-            path(partial_derivatives, stageAs: "pd_???")
+            path(partial_derivatives, stageAs: "pd_???"),
             path(snp_inclusion, stageAs: "snp_inclusion_???"),
-            path(gene_inclusion, stageAs: "gene_inclusion_???"),
+            path(gene_inclusion, stageAs: "gene_inclusion_???")
 
     output:
       tuple path('MetaAnalysisResultsEncoded/meta'), emit: meta

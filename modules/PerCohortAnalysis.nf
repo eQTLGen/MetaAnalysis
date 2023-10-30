@@ -6,19 +6,17 @@ process PerCohortAnalysis {
     tag {"chunk $chunk"}
 
     input:
-      val chunk
-      path mapper
       val th
-      val nr_chunks
-      path snp_inclusion
-      path gene_inclusion
-      path gene_per_cohort
+      val genes
+      path mapper
       path covariate_filtering
-      path genotype, stageAs: "genotypes_???"
-      path expression, stageAs: "expression_???"
-      path partial_derivatives, stageAs: "pd_???"
-      val cohort
-      val encoded
+      tuple val(cohort),
+            val(encoded),
+            path(genotype, stageAs: "genotypes_???"),
+            path(expression, stageAs: "expression_???"),
+            path(partial_derivatives, stageAs: "pd_???"),
+            path(snp_inclusion, stageAs: "snp_inclusion_???"),
+            path(gene_inclusion, stageAs: "gene_inclusion_???")
 
     output:
       tuple val(chunk), path('MetaAnalysisResultsEncoded/meta'), emit: meta
@@ -32,6 +30,13 @@ process PerCohortAnalysis {
 
     echo !{snp_inclusion}
 
+    echo !{genes.join("\n")} > gene_chunk.txt
+
+    for gene_inclusion_file in !{gene_inclusion.join(" ")}; do
+      echo "ID" > "intersect_${gene_inclusion_file}"
+      comm -12 gene_chunk.txt | sort) <(sort ${gene_inclusion_file}) >> "intersect_${gene_inclusion_file}"
+    done
+
     cohort=!{cohort.join(" ")}
     encoded=!{encoded.join(" ")}
 
@@ -40,7 +45,7 @@ process PerCohortAnalysis {
     partial_derivatives=!{partial_derivatives.join(" ")}
 
     snp_inclusion=!{snp_inclusion.join(" ")}
-    gene_inclusion=!{gene_inclusion.join(" ")}
+    gene_inclusion=!{gene_inclusion.collect { "intersect_$gene_inclusion_file" }.join(" ")}
 
     python2 -u !{baseDir}/bin/hase/hase.py \
     -study_name ${cohort} \
@@ -59,7 +64,7 @@ process PerCohortAnalysis {
     -cluster "y" \
     -snp_id_inc ${snp_inclusion} \
     -ph_id_inc ${gene_inclusion} \
-    -ph_id_log !{gene_per_cohort} \
+    -ph_id_log ${gene_inclusion} \
     -ci !{covariate_filtering}
 
     # Run combine command to combine the parquet files for every gene into one parquet file.
