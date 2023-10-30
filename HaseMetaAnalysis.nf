@@ -99,13 +99,13 @@ input_ch = Channel.fromPath(params.mastertable)
 if (params.genes_percohort) {
   gene_percohort_ch = Channel.fromPath(params.genes_percohort)
    .ifEmpty { error "Cannot find gene per cohort from: ${params.genes_percohort}" }
-   .collate(gene_chunk_size)
+   .collate(params.gene_chunk_size)
 }
 
 if (params.gene_filter) {
   gene_filter_ch = Channel.fromPath(params.gene_filter)
    .ifEmpty { error "Cannot find gene filter from: ${params.gene_filter}" }
-   .collate(gene_chunk_size)
+   .collate(params.gene_chunk_size)
 }
 
 mapper = file(params.mapperpath)
