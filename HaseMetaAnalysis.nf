@@ -94,12 +94,15 @@ input_ch = Channel.fromPath(params.mastertable)
                   row.partial_derivatives,
                   row.snp_inclusion,
                   row.gene_inclusion ]}
+    .view()
     .collect()
 
 if (params.genes_percohort) {
   gene_percohort_ch = Channel.fromPath(params.genes_percohort)
    .ifEmpty { error "Cannot find gene per cohort from: ${params.genes_percohort}" }
+   .splitCsv(skip: 1 )
    .collate(params.gene_chunk_size)
+   .view()
 }
 
 if (params.gene_filter) {
