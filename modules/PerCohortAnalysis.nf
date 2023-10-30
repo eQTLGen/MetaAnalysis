@@ -21,8 +21,8 @@ process PerCohortAnalysis {
       val encoded
 
     output:
-      tuple val(chunk), path('MetaAnalysisResultsEncoded/*.result.parquet'), emit: meta_analysed
-      tuple val(chunk), path('MetaAnalysisResultsEncoded/*.per_cohort.parquet'), emit: per_cohort
+      tuple val(chunk), path('MetaAnalysisResultsEncoded/meta'), emit: meta
+      tuple val(chunk), path('MetaAnalysisResultsEncoded/cohort'), emit: cohort
 
     shell:
     '''
@@ -61,5 +61,12 @@ process PerCohortAnalysis {
     -ph_id_inc ${gene_inclusion} \
     -ph_id_log !{gene_per_cohort} \
     -ci !{covariate_filtering}
+
+    # Run combine command to combine the parquet files for every gene into one parquet file.
+    # This allows using larger row group size, improving storage characteristics
+    python2 !{baseDir}/bin/combine27.py \
+    --path MetaAnalysisResultsEncoded/cohort \
+    --phenotypes !{genes.join(" ")} \
+    --cohorts ${cohort}
     '''
 }

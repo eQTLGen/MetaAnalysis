@@ -44,6 +44,7 @@ process MetaAnalyseCohortsPerGene {
     snp_inclusion=!{snp_inclusion.join(" ")}
     gene_inclusion=!{gene_inclusion.collect { "intersect_$gene_inclusion_file" }.join(" ")}
 
+    # Run hase command
     python2 !{baseDir}/bin/hase/hase.py \
     -study_name ${cohort} \
     -g ${genotype} \
@@ -60,6 +61,12 @@ process MetaAnalyseCohortsPerGene {
     -snp_id_inc ${snp_inclusion} \
     -ph_id_inc ${gene_inclusion} \
     -ci !{covariate_filtering}
+
+    # Run combine command to combine the parquet files for every gene into one parquet file.
+    # This allows using larger row group size, improving storage characteristics
+    python2 !{baseDir}/bin/combine27.py \
+    --path MetaAnalysisResultsEncoded/meta \
+    --phenotypes !{genes.join(" ")}
     '''
 }
 
