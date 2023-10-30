@@ -7,8 +7,8 @@
 nextflow.enable.dsl = 2
 
 // import modules
-include { MetaAnalyseCohorts; CleanMetaAnalyseCohorts } from './modules/MetaAnalyseCohorts'
-include { PerCohortAnalysis } from './modules/PerCohortAnalysis'
+include { MetaAnalyseCohortsPerGene } from './modules/MetaAnalyseCohorts'
+include { PerCohortAnalysisPerGene } from './modules/PerCohortAnalysis'
 include { SubsetGenesInclusion } from './modules/SubsetGenesInclusion'
 include { Partition; Partition as PartitionPerCohort; CleanPartition } from './modules/Partition'
 include { ListPhenotypes } from './modules/ListPhenotypes'
