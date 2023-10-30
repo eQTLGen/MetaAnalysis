@@ -125,7 +125,7 @@ if (params.covariates) {
 workflow {
 
   if (params.genes_percohort) {
-    PerCohortAnalysisResult = PerCohortAnalysisPerGene(th, gene_percohort_ch, mapper, covariate_file, input_ch)
+    PerCohortAnalysisResult = PerCohortAnalysis(th, gene_percohort_ch, mapper, covariate_file, input_ch)
   }
 
   else if (params.gene_filter) {
