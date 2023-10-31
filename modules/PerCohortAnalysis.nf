@@ -8,6 +8,7 @@ process PerCohortAnalysis {
     input:
       val th
       path genes
+      path genes_per_cohort
       path mapper
       path covariate_filtering
       val cohort
@@ -49,7 +50,7 @@ process PerCohortAnalysis {
       -ref_name 1000G-30x_ref \
       -snp_id_inc !{snp_inclusion.name.join(" ")} \
       -ph_id_inc !{gene_inclusion.name.collect { filename -> "intersect_$filename" }.join(' ')} \
-      -ph_id_log !{gene_inclusion.name.collect { filename -> "intersect_$filename" }.join(' ')} \
+      -ph_id_log !{genes_per_cohort} \
       -ci !{covariate_filtering}
 
     # Run combine command to combine the parquet files for every gene into one parquet file.

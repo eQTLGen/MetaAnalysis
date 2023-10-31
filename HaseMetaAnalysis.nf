@@ -96,16 +96,31 @@ partial_derivatives_ch = input_ch.map{row -> row.partial_derivatives}.collect()
 snp_inclusion_ch = input_ch.map{row -> row.snp_inclusion}.collect()
 gene_inclusion_ch = input_ch.map{row -> row.gene_inclusion}.collect()
 
+if (params.gene_filter) {
+  gene_chunk_ch = Channel.fromPath(params.gene_filter)
+   .ifEmpty { error "Cannot find gene filter from: ${params.gene_filter}" }
+   .splitText( by:params.gene_chunk_size, keepHeader:true, file:true)
+
+} else {
+  all_genes_ch = input_ch.map{row -> row.gene_inclusion}
+   .splitCsv(header: true)
+   .map{row -> row.ID}
+   .flatten()
+   .unique()
+
+  gene_chunk_ch = Channel.of('ID').concat(all_genes_ch)
+  .collectFile()
+  .splitText( by:params.gene_chunk_size, keepHeader:true, file:true)
+}
+
 if (params.genes_percohort) {
   gene_percohort_ch = Channel.fromPath(params.genes_percohort)
    .ifEmpty { error "Cannot find gene per cohort from: ${params.genes_percohort}" }
-   .splitText( by:params.gene_chunk_size, keepHeader:true, file:true)
 }
 
-if (params.gene_filter) {
-  gene_filter_ch = Channel.fromPath(params.gene_filter)
-   .ifEmpty { error "Cannot find gene filter from: ${params.gene_filter}" }
-   .collate(params.gene_chunk_size)
+if (params.variants_percohort) {
+  variants_percohort_ch = Channel.fromPath(params.variants_percohort)
+   .ifEmpty { error "Cannot find variant per cohort from: ${params.variants_percohort}" }
 }
 
 mapper = file(params.mapperpath)
@@ -125,11 +140,11 @@ if (params.covariates) {
 workflow {
 
   if (params.genes_percohort) {
-    PerCohortAnalysisResult = PerCohortAnalysis(th, gene_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
+    PerCohortAnalysisResult = PerCohortAnalysis(th, gene_chunk_ch, gene_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
   }
 
   else if (params.gene_filter) {
-    //MetaAnalysisResult = MetaAnalyseCohortsPerGene(th, gene_filter_ch, mapper, covariate_file, input_ch)
+    //MetaAnalysisResult = MetaAnalyseCohortsPerGene(th, gene_chunk_ch, mapper, covariate_file, input_ch)
 
   }
 
