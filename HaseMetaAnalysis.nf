@@ -87,22 +87,19 @@ log.info "================================================="
 input_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.cohort,
-                  row.encoded,
-                  row.genotype,
-                  row.expression,
-                  row.partial_derivatives,
-                  row.snp_inclusion,
-                  row.gene_inclusion ]}
-    .view()
-    .collect()
+
+cohort_ch = input_ch.map{row -> row.cohort}.collect()
+encoded_ch = input_ch.map{row -> row.encoded}.collect()
+genotype_ch = input_ch.map{row -> row.genotype}.collect()
+expression_ch = input_ch.map{row -> row.expression}.collect()
+partial_derivatives_ch = input_ch.map{row -> row.partial_derivatives}.collect()
+snp_inclusion_ch = input_ch.map{row -> row.snp_inclusion}.collect()
+gene_inclusion_ch = input_ch.map{row -> row.gene_inclusion}.collect()
 
 if (params.genes_percohort) {
   gene_percohort_ch = Channel.fromPath(params.genes_percohort)
    .ifEmpty { error "Cannot find gene per cohort from: ${params.genes_percohort}" }
-   .splitCsv(skip: 1 )
-   .collate(params.gene_chunk_size)
-   .view()
+   .splitText( by:params.gene_chunk_size, keepHeader:true, file:true)
 }
 
 if (params.gene_filter) {
@@ -128,11 +125,11 @@ if (params.covariates) {
 workflow {
 
   if (params.genes_percohort) {
-    PerCohortAnalysisResult = PerCohortAnalysis(th, gene_percohort_ch, mapper, covariate_file, input_ch)
+    PerCohortAnalysisResult = PerCohortAnalysis(th, gene_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
   }
 
   else if (params.gene_filter) {
-    MetaAnalysisResult = MetaAnalyseCohortsPerGene(th, gene_filter_ch, mapper, covariate_file, input_ch)
+    //MetaAnalysisResult = MetaAnalyseCohortsPerGene(th, gene_filter_ch, mapper, covariate_file, input_ch)
 
   }
 
