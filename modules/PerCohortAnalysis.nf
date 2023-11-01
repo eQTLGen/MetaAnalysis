@@ -9,6 +9,7 @@ process PerCohortAnalysis {
       val th
       path genes
       path genes_per_cohort
+      path variants_per_cohort
       path mapper
       path covariate_filtering
       val cohort
@@ -24,6 +25,7 @@ process PerCohortAnalysis {
       tuple val(chunk), path('MetaAnalysisResultsEncoded/cohort'), emit: cohort
 
     shell:
+    snps_per_cohort_arg = (variants_per_cohort.name != 'NO_FILE') ? "-snp_id_log ${variants_per_cohort}" : ""
     '''
     export MKL_NUM_THREADS=1
     export NUMEXPR_NUM_THREADS=1
@@ -51,6 +53,7 @@ process PerCohortAnalysis {
       -snp_id_inc !{snp_inclusion.name.join(" ")} \
       -ph_id_inc !{gene_inclusion.name.collect { filename -> "intersect_$filename" }.join(' ')} \
       -ph_id_log !{genes_per_cohort} \
+      !{snps_per_cohort_arg} \
       -ci !{covariate_filtering}
 
     # Run combine command to combine the parquet files for every gene into one parquet file.

@@ -50,6 +50,7 @@ Optional arguments:
 //Default parameters
 params.mastertable = ''
 params.genes_percohort = ''
+params.variants_percohort = ''
 params.gene_filter = ''
 params.outdir = ''
 params.mapperpath = ''
@@ -120,7 +121,6 @@ if (params.genes_percohort) {
 
 if (params.variants_percohort) {
   variants_percohort_ch = Channel.fromPath(params.variants_percohort)
-   .ifEmpty { error "Cannot find variant per cohort from: ${params.variants_percohort}" }
 }
 
 mapper = file(params.mapperpath)
@@ -140,7 +140,7 @@ if (params.covariates) {
 workflow {
 
   if (params.genes_percohort) {
-    PerCohortAnalysisResult = PerCohortAnalysis(th, gene_chunk_ch, gene_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
+    PerCohortAnalysisResult = PerCohortAnalysis(th, gene_chunk_ch, gene_percohort_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
   }
 
   else if (params.gene_filter) {
