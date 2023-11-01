@@ -50,7 +50,7 @@ Optional arguments:
 //Default parameters
 params.mastertable = ''
 params.genes_percohort = ''
-params.variants_percohort = ''
+params.variants_percohort = 'NO_FILE'
 params.gene_filter = ''
 params.outdir = ''
 params.mapperpath = ''
