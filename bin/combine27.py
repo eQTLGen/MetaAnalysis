@@ -94,14 +94,16 @@ def main(argv=None):
     # Process input
     parser = argparse.ArgumentParser()
     parser.add_argument('--path')
-    parser.add_argument('--phenotypes', nargs="+")
+    parser.add_argument('--phenotypes')
     parser.add_argument('--cohorts', nargs="+", required=False, default=None)
 
     args = parser.parse_args(argv)
     # Perform method
 
+    phenotypes_file = pd.read_csv(args.phenotypes)
+
     if args.cohorts is not None:
-        combine_per_cohort(args.path, args.phenotypes, args.cohorts)
+        combine_per_cohort(args.path, phenotypes_file.ID, args.cohorts)
     else:
         combine_meta(args.path, args.phenotypes)
 
