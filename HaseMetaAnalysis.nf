@@ -97,6 +97,7 @@ partial_derivatives_ch = input_ch.map{row -> row.partial_derivatives}.collect()
 snp_inclusion_ch = input_ch.map{row -> row.snp_inclusion}.collect()
 gene_inclusion_ch = input_ch.map{row -> row.gene_inclusion}.collect()
 
+// Gene filter
 if (params.gene_filter) {
   gene_chunk_ch = Channel.fromPath(params.gene_filter)
    .ifEmpty { error "Cannot find gene filter from: ${params.gene_filter}" }
@@ -108,6 +109,7 @@ if (params.gene_filter) {
    .splitCsv(header: true)
    .map{gene_row -> gene_row.ID}
    .unique()
+   .view()
 
   gene_chunk_ch = Channel.of('ID').concat(all_genes_ch)
   .collectFile()
