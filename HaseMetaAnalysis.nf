@@ -103,15 +103,16 @@ if (params.gene_filter) {
    .splitText( by:params.gene_chunk_size, keepHeader:true, file:true)
 
 } else {
-  all_genes_ch = input_ch.map{row -> row.gene_inclusion}
+  all_genes_ch = input_ch
+   .map{row -> file(row.gene_inclusion)}
    .splitCsv(header: true)
-   .map{row -> row.ID}
-   .flatten()
+   .map{gene_row -> gene_row.ID}
    .unique()
 
   gene_chunk_ch = Channel.of('ID').concat(all_genes_ch)
   .collectFile()
   .splitText( by:params.gene_chunk_size, keepHeader:true, file:true)
+  .view()
 }
 
 if (params.genes_percohort) {
