@@ -61,7 +61,7 @@ def _combine(filters, partition_cols, path):
         root_path=path,
         existing_data_behavior='delete_matching',
         partition_cols=partition_cols,
-        max_rows_per_group=524288)
+        row_group_size=524288)
 
 
 def combine_per_cohort(path, phenotypes, cohorts):
