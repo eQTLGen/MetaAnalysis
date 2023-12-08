@@ -78,5 +78,11 @@ process PerCohortAnalysisPerGene {
     --out MetaAnalysisResultsEncoded/cohort \
     --phenotypes !{genes} \
     --cohorts !{cohort.join(" ")}
+
+    python2 !{baseDir}/bin/combine27.py \
+    --path MetaAnalysisResultsEncodedTmp/meta \
+    --out MetaAnalysisResultsEncoded/meta \
+    --phenotypes !{genes} \
+    --cohorts !{cohort.join(" ")}`
     '''
 }
