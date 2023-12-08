@@ -143,7 +143,7 @@ if (params.covariates) {
 workflow {
 
   if (params.genes_percohort) {
-    PerCohortAnalysisResult = PerCohortAnalysis(th, gene_chunk_ch, gene_percohort_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
+    PerCohortAnalysis(th, gene_chunk_ch, gene_percohort_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
   }
 
   else if (params.gene_filter) {

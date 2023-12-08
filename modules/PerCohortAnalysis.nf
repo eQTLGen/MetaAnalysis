@@ -2,7 +2,8 @@
 
 
 process PerCohortAnalysis {
-
+    cache true
+    publishDir "${params.outdir}", mode: 'symlink', overwrite: true
     tag {"chunk $chunk"}
 
     input:
@@ -21,8 +22,8 @@ process PerCohortAnalysis {
       path gene_inclusion, stageAs: "gene_inclusion_???"
 
     output:
-      tuple val(chunk), path('MetaAnalysisResultsEncoded/meta'), emit: meta
-      tuple val(chunk), path('MetaAnalysisResultsEncoded/cohort'), emit: cohort
+      tuple path('MetaAnalysisResultsEncoded/meta'), emit: meta
+      tuple path('MetaAnalysisResultsEncoded/cohort'), emit: cohort
 
     shell:
     snps_per_cohort_arg = (variants_per_cohort.name != 'NO_FILE') ? "-snp_id_log ${variants_per_cohort}" : ""
@@ -54,7 +55,7 @@ process PerCohortAnalysis {
       -ph !{expression.name.join(" ")} \
       -derivatives !{partial_derivatives.name.join(" ")} \
       -mapper !{mapper}/ \
-      -o MetaAnalysisResultsEncoded \
+      -o MetaAnalysisResultsEncodedTmp \
       -mode meta-classic \
       -encoded !{encoded.join(" ")} \
       -allow_missingness \
@@ -70,7 +71,8 @@ process PerCohortAnalysis {
     # Run combine command to combine the parquet files for every gene into one parquet file.
     # This allows using larger row group size, improving storage characteristics
     python2 !{baseDir}/bin/combine27.py \
-    --path MetaAnalysisResultsEncoded/cohort \
+    --path MetaAnalysisResultsEncodedTmp/cohort \
+    --out MetaAnalysisResultsEncoded/cohort \
     --phenotypes !{genes} \
     --cohorts ${cohort}
     '''
