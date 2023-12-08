@@ -1,24 +1,23 @@
 #!/bin/bash nextflow 
 
 
-process PerCohortAnalysis {
-
-    tag {"chunk $chunk"}
+process PerCohortAnalysisPerGene {
+    publishDir "${params.outdir}/eqtls", mode: 'move', overwrite: true
+    scratch true
 
     input:
       val th
       path genes
-      path genes_per_cohort
       path variants_per_cohort
       path mapper
       path covariate_filtering
       val cohort
       val encoded
-      path genotype, stageAs: "genotypes_???"
-      path expression, stageAs: "expression_???"
-      path partial_derivatives, stageAs: "pd_???"
-      path snp_inclusion, stageAs: "snp_inclusion_???"
-      path gene_inclusion, stageAs: "gene_inclusion_???"
+      path genotype, stageAs: "genotypes_???", arity: '1..*'
+      path expression, stageAs: "expression_???", arity: '1..*'
+      path partial_derivatives, stageAs: "pd_???", arity: '1..*'
+      path snp_inclusion, stageAs: "snp_inclusion_???", arity: '1..*'
+      path gene_inclusion, stageAs: "gene_inclusion_???", arity: '1..*'
 
     output:
       tuple val(chunk), path('MetaAnalysisResultsEncoded/meta'), emit: meta
@@ -36,6 +35,12 @@ process PerCohortAnalysis {
     export NUMEXPR_NUM_THREADS=1
     export OMP_NUM_THREADS=1
 
+    mkdir tmp_files
+
+    cp -r genotypes* tmp_files/
+    cp -r expression* tmp_files/
+    cp -r pd* tmp_files/
+
     # Filter gene inclusion files to only contain genes to be ran in this chunk
     for gene_inclusion_file in !{gene_inclusion.join(' ')}; do
       echo "ID" > "intersect_${gene_inclusion_file}"
@@ -50,9 +55,9 @@ process PerCohortAnalysis {
 
     python2 -u !{baseDir}/bin/hase/hase.py \
       -study_name !{cohort.join(" ")} \
-      -g !{genotype.name.join(" ")} \
-      -ph !{expression.name.join(" ")} \
-      -derivatives !{partial_derivatives.name.join(" ")} \
+      -g !{genotype.name.collect{filename -> "tmp_files/$filename"}.join(' ')} \
+      -ph !{expression.name.collect{filename -> "tmp_files/$filename"}.join(' ')}  \
+      -derivatives !{partial_derivatives.name.collect{filename -> "tmp_files/$filename"}.join(' ')} \
       -mapper !{mapper}/ \
       -o MetaAnalysisResultsEncoded \
       -mode meta-classic \
@@ -63,7 +68,6 @@ process PerCohortAnalysis {
       -ref_name 1000G-30x_ref \
       -snp_id_inc !{snp_inclusion_per_cohort} \
       -ph_id_inc !{gene_inclusion.name.collect { filename -> "intersect_$filename" }.join(' ')} \
-      -ph_id_log !{genes_per_cohort} \
       !{snps_per_cohort_arg} \
       -ci !{covariate_filtering}
 
@@ -72,6 +76,6 @@ process PerCohortAnalysis {
     python2 !{baseDir}/bin/combine27.py \
     --path MetaAnalysisResultsEncoded/cohort \
     --phenotypes !{genes} \
-    --cohorts ${cohort}
+    --cohorts !{cohort.join(" ")}
     '''
 }
