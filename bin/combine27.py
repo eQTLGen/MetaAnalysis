@@ -51,20 +51,19 @@ __description__ = "{} is a program developed and maintained by {}. " \
 # Classes
 
 # Functions
-def _combine(filters, partition_cols, path):
+def _combine(filters, partition_cols, path, out):
     results_dataset = pq.ParquetDataset(
         path, validate_schema=True,
         filters=filters).read()
     print("Writing dataset")
     pq.write_to_dataset(
         table=results_dataset,
-        root_path=path,
-        existing_data_behavior='delete_matching',
+        root_path=out,
         partition_cols=partition_cols,
         row_group_size=524288)
 
 
-def combine_per_cohort(path, phenotypes, cohorts):
+def combine_per_cohort(path, out, phenotypes, cohorts):
     partition_cols = ["phenotype".decode("utf8"), "cohort".decode("utf8")]
 
     for cohort in cohorts:
@@ -74,17 +73,17 @@ def combine_per_cohort(path, phenotypes, cohorts):
 
             filters = [("phenotype".decode("utf8"), "=", phenotype.decode("utf8")),
                        ("cohort".decode("utf8"), "=", cohort.decode("utf8"))]
-            _combine(filters, partition_cols, path)
+            _combine(filters, partition_cols, path, out)
 
 
-def combine_meta(path, phenotypes):
+def combine_meta(path, out, phenotypes):
     partition_cols = ["phenotype".decode("utf8")]
 
     for phenotype in phenotypes:
         print(phenotype)
         filters = [("phenotype".decode("utf8"), "=", phenotype.decode("utf8"))]
 
-        _combine(filters, partition_cols, path)
+        _combine(filters, partition_cols, path, out)
 
 
 # Main
@@ -94,6 +93,7 @@ def main(argv=None):
     # Process input
     parser = argparse.ArgumentParser()
     parser.add_argument('--path')
+    parser.add_argument('--out')
     parser.add_argument('--phenotypes')
     parser.add_argument('--cohorts', nargs="+", required=False, default=None)
 
@@ -103,9 +103,9 @@ def main(argv=None):
     phenotypes_file = pd.read_csv(args.phenotypes)
 
     if args.cohorts is not None:
-        combine_per_cohort(args.path, phenotypes_file.ID, args.cohorts)
+        combine_per_cohort(args.path, args.out, phenotypes_file.ID, args.cohorts)
     else:
-        combine_meta(args.path, args.phenotypes)
+        combine_meta(args.path, args.out, args.phenotypes)
 
     return 0
 
