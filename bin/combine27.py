@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pyarrow.feather as ft
 
 
 # Metadata
@@ -47,25 +48,65 @@ __description__ = "{} is a program developed and maintained by {}. " \
 
 
 # Constants
-PYARROW_SCHEMA_META = pa.schema(
-        [("phenotype", pa.string()),
-         ("chromosome", pa.int8()),
-         ("variant", pa.string()),
-         ("beta", pa.float64()),
-         ("standard_error", pa.float64()),
-         ("i_squared", pa.float64()),
-         ("sample_size", pa.float64())])
+PYARROW_SCHEMA_META = pa.schema([
+    ("phenotype", pa.string()),
+    ("chromosome", pa.int8()),
+    ("variant", pa.string()),
+    ("beta", pa.float64()),
+    ("standard_error", pa.float64()),
+    ("i_squared", pa.float64()),
+    ("sample_size", pa.float64())])
+
+
+PYARROW_SCHEMA_COHORT = pa.schema([
+    ("phenotype", pa.string()),
+    ("chromosome", pa.int8()),
+    ("variant", pa.string()),
+    ("beta", pa.float64()),
+    ("standard_error", pa.float64()),
+    ("sample_size", pa.float64()),
+    ("cohort", pa.string())])
+
 
 # Classes
+class FeatherDataset:
+    def __init__(self, path, filters):
+        self.filters = filters
+        self.path = path
+
+        partitioning = list()
+
+        for col_name, operator, value in filters:
+            partitioning.append("{}={}".format(col_name, value))
+
+        requested_files = os.path.join(self.path, os.path.join(*partitioning), "*.feather")
+        self.matched_files = glob.glob(requested_files)
+
+    def read(self):
+        return pd.concat([ft.read_feather(f) for f in self.matched_files])
+
 
 # Functions
-def _combine(filters, partition_cols, path, out):
-    parquet_dataset = pq.ParquetDataset(path, schema=PYARROW_SCHEMA_META, validate_schema=False, filters=filters)
+def _combine(filters, partition_cols, path, out, schema):
+    parquet_dataset = pq.ParquetDataset(path, schema=schema, validate_schema=False, filters=filters)
     if len(parquet_dataset.pieces) == 0:
         print("length of pieces equal to 0!")
     else:
         results_dataset = parquet_dataset.read()
-        print(results_dataset)
+        print("Writing dataset")
+        pq.write_to_dataset(
+            table=results_dataset,
+            root_path=out,
+            partition_cols=partition_cols,
+            row_group_size=524288)
+
+
+def _combine_feather(filters, partition_cols, path, out, schema):
+    feather_dataset = FeatherDataset(path, filters=filters)
+    if len(feather_dataset.matched_files) == 0:
+        print("length of pieces equal to 0!")
+    else:
+        results_dataset = pa.Table.from_pandas(feather_dataset.read(), schema)
         print("Writing dataset")
         pq.write_to_dataset(
             table=results_dataset,
@@ -76,22 +117,27 @@ def _combine(filters, partition_cols, path, out):
 
 def combine_per_cohort(path, out, phenotypes, cohorts):
     partition_cols = ["phenotype".decode("utf8"), "cohort".decode("utf8")]
+
+    schema = PYARROW_SCHEMA_COHORT
+
     for cohort in cohorts:
         print(cohort)
         for phenotype in phenotypes:
             print(phenotype)
-            filters = [("phenotype".decode("utf8"), "=", phenotype.decode("utf8")),
-                       ("cohort".decode("utf8"), "=", cohort.decode("utf8"))]
-            _combine(filters, partition_cols, path, out)
+            filters = [("cohort".decode("utf8"), "=", cohort.decode("utf8")),
+                       ("phenotype".decode("utf8"), "=", phenotype.decode("utf8"))]
+            _combine_feather(filters, partition_cols, path, out, schema)
 
 
 def combine_meta(path, out, phenotypes):
     partition_cols = ["phenotype".decode("utf8")]
+
+    schema = PYARROW_SCHEMA_META
+
     for phenotype in phenotypes:
         print(phenotype)
         filters = [("phenotype".decode("utf8"), "=", phenotype.decode("utf8"))]
-        _combine(filters, partition_cols, path, out)
-        break
+        _combine_feather(filters, partition_cols, path, out, schema)
 
 
 # Main
