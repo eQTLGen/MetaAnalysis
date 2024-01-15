@@ -2,8 +2,9 @@
 
 
 process PerCohortAnalysisPerGene {
-    publishDir "${params.outdir}/eqtls", mode: 'move', overwrite: true
-    scratch true
+    publishDir "${params.outdir}/eqtls/meta", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*', saveAs: { fn -> file(fn).getName() }
+    publishDir "${params.outdir}/eqtls/cohort", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*', saveAs: { fn -> file(fn).getName() }
+    scratch false
 
     input:
       val th
@@ -20,8 +21,8 @@ process PerCohortAnalysisPerGene {
       path gene_inclusion, stageAs: "gene_inclusion_???", arity: '1..*'
 
     output:
-      tuple path('MetaAnalysisResultsEncoded/meta'), emit: meta
-      tuple path('MetaAnalysisResultsEncoded/cohort'), emit: cohort
+      tuple path('MetaAnalysisResultsEncoded/meta/*'), emit: meta
+      tuple path('MetaAnalysisResultsEncoded/cohort/*'), emit: cohort
 
     shell:
     snps_per_cohort_arg = (variants_per_cohort.name != 'NO_FILE') ? "-snp_id_log ${variants_per_cohort}" : ""
@@ -82,7 +83,7 @@ process PerCohortAnalysisPerGene {
     python2 !{baseDir}/bin/combine27.py \
     --path MetaAnalysisResultsEncodedTmp/meta \
     --out MetaAnalysisResultsEncoded/meta \
-    --phenotypes !{genes} \
-    --cohorts !{cohort.join(" ")}`
+    --phenotypes !{genes}
+
     '''
 }

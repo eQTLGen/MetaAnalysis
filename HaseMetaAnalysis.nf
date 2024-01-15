@@ -87,7 +87,7 @@ log.info "================================================="
 
 input_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
+    .splitCsv(header: true, sep: '\t', strip: true).view()
 
 cohort_ch = input_ch.map{row -> row.cohort}.collect()
 encoded_ch = input_ch.map{row -> row.encoded}.collect()
