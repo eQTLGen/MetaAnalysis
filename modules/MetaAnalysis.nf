@@ -1,14 +1,13 @@
 #!/bin/bash nextflow 
 
 
-process PerCohortAnalysisPerGene2 {
+process PerCohortAnalysisPerGene {
     publishDir "${params.outdir}/eqtls/meta", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*', saveAs: { fn -> file(fn).getName() }
     publishDir "${params.outdir}/eqtls/cohort", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*', saveAs: { fn -> file(fn).getName() }
     scratch true
 
     input:
       val th
-      val th_full
       path genes
       path variants_per_cohort
       path mapper
@@ -68,7 +67,6 @@ process PerCohortAnalysisPerGene2 {
       -encoded !{encoded.join(" ")} \
       -max-missingness-rate 0.8 \
       -thr !{th} \
-      -thr_full_log !{th_full} \
       -mapper_chunk 500 \
       -ref_name 1000G-30x_ref \
       -snp_id_inc !{snp_inclusion_per_cohort} \
