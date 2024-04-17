@@ -1,14 +1,15 @@
 #!/bin/bash nextflow
 
 
-/* 
- * enables modules 
+/*
+ * enables modules
  */
 nextflow.enable.dsl = 2
 
 // import modules
 include { MetaAnalyseCohortsPerGene } from './modules/MetaAnalyseCohorts'
 include { PerCohortAnalysisPerGene } from './modules/PerCohortAnalysis'
+include { MetaAnalysisPerGene } from './modules/MetaAnalysis'
 include { SubsetGenesInclusion } from './modules/SubsetGenesInclusion'
 include { Partition; Partition as PartitionPerCohort; CleanPartition } from './modules/Partition'
 include { ListPhenotypes } from './modules/ListPhenotypes'
@@ -57,6 +58,8 @@ params.mapperpath = ''
 params.th = 0
 params.covariates = ''
 params.gene_chunk_size = 100
+params.variant_chunks = 20
+params.th_full = ''
 
 log.info """=================================================
 HASE meta-analyzer v${workflow.manifest.version}"
@@ -103,11 +106,17 @@ all_genes_ch = input_ch
   .map{gene_row -> gene_row.ID}
   .unique()
 
-genes_per_cohort_ch = Channel.fromPath(params.genes_percohort)
-  .splitCsv( header:true ).map { row -> row.ID }
+if (params.genes_percohort != '') {
+  genes_per_cohort_ch = Channel.fromPath(params.genes_percohort)
+    .splitCsv( header:true ).map { row -> row.ID }
 
-gene_chunk_ch = Channel.of('ID').concat(genes_per_cohort_ch)
-  .collectFile(name: 'gene_chunk_ch.txt', keepHeader:false, newLine:true, sort: false, skip:0).view().splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+  gene_chunk_ch = Channel.of('ID').concat(genes_per_cohort_ch)
+    .collectFile(name: 'gene_chunk_ch.txt', keepHeader:false, newLine:true, sort: false, skip:0).view()
+    .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+} else {
+  gene_chunk_ch = Channel.of('ID').concat(all_genes_ch).collectFile(name: 'gene_chunk_ch.txt', keepHeader:false, newLine:true, sort:false, skip:0)
+    .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+}
 
 variants_percohort_ch = Channel.fromPath(params.variants_percohort)
   .collect().view()
@@ -116,15 +125,20 @@ mapper = file(params.mapperpath)
 
 // Optional arguments
 th = params.th
+th_full = params.th_full
+chunks = params.variant_chunks
 
 if (params.covariates) {
   covariate_file = channel.fromPath(params.covariates).collect().view()
 } else {covariate_file = Channel.value("")}
 
+chunk_ch = Channel.from(1..chunks).combine(gene_chunk_ch)
+
 workflow {
-
-  PerCohortAnalysisResult = PerCohortAnalysisPerGene(th, gene_chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
-
+  if (params.th_full == '') {
+      PerCohortAnalysisResult = MetaAnalysisPerGene(th, chunks, chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
+  } else
+      PerCohortAnalysisResult = PerCohortAnalysisPerGene(th, th_full, chunks, chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
 }
 
 workflow.onComplete {

@@ -1,14 +1,15 @@
 #!/bin/bash nextflow 
 
 
-process PerCohortAnalysisPerGene {
-    publishDir "${params.outdir}/eqtls/meta", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*', saveAs: { fn -> file(fn).getName() }
-    publishDir "${params.outdir}/eqtls/cohort", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*', saveAs: { fn -> file(fn).getName() }
+process MetaAnalysisPerGene {
+    publishDir "${params.outdir}/eqtls/meta", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*/*', saveAs: { fn -> fn.tokenize('/')[2..3].join('/') }
+    publishDir "${params.outdir}/eqtls/cohort", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*/*/*', saveAs: { fn -> fn.tokenize('/')[2..4].join('/') }
     scratch true
 
     input:
       val th
-      path genes
+      val nr_chunks
+      tuple val(chunk), path(genes)
       path variants_per_cohort
       path mapper
       path covariate_filtering
@@ -21,8 +22,8 @@ process PerCohortAnalysisPerGene {
       path gene_inclusion, stageAs: "gene_inclusion_???", arity: '1..*'
 
     output:
-      tuple path('MetaAnalysisResultsEncoded/meta/*'), emit: meta
-      tuple path('MetaAnalysisResultsEncoded/cohort/*'), emit: cohort
+      path 'MetaAnalysisResultsEncoded/meta/*/*.parquet', emit: meta
+      path 'MetaAnalysisResultsEncoded/cohort/*/*/*.parquet', emit: cohort
 
     shell:
     snps_per_cohort_arg = (variants_per_cohort.name != 'NO_FILE') ? "-snp_id_log ${variants_per_cohort}" : ""
@@ -67,7 +68,9 @@ process PerCohortAnalysisPerGene {
       -encoded !{encoded.join(" ")} \
       -max-missingness-rate 0.8 \
       -thr !{th} \
-      -mapper_chunk 500 \
+      -cluster "y" \
+      -node !{nr_chunks} !{chunk} \
+      -mapper_chunk 1000 \
       -ref_name 1000G-30x_ref \
       -snp_id_inc !{snp_inclusion_per_cohort} \
       -ph_id_inc !{gene_inclusion.name.collect { filename -> "intersect_$filename" }.join(' ')} \
@@ -78,14 +81,18 @@ process PerCohortAnalysisPerGene {
     # This allows using larger row group size, improving storage characteristics
     python2 !{baseDir}/bin/combine27.py \
     --path MetaAnalysisResultsEncodedTmp/cohort \
-    --out MetaAnalysisResultsEncoded/cohort \
+    --out-dir MetaAnalysisResultsEncoded/cohort \
+    --out-tag !{chunk} \
     --phenotypes !{genes} \
     --cohorts !{cohort.join(" ")}
 
     python2 !{baseDir}/bin/combine27.py \
     --path MetaAnalysisResultsEncodedTmp/meta \
-    --out MetaAnalysisResultsEncoded/meta \
+    --out-dir MetaAnalysisResultsEncoded/meta \
+    --out-tag !{chunk} \
     --phenotypes !{genes}
 
+    mkdir -p MetaAnalysisResultsEncoded/cohort/null/null
+    touch MetaAnalysisResultsEncoded/cohort/null/null/null.parquet
     '''
 }

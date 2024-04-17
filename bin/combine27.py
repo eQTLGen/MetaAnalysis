@@ -101,7 +101,7 @@ def _combine(filters, partition_cols, path, out, schema):
             row_group_size=524288)
 
 
-def _combine_feather(filters, partition_cols, path, out, schema):
+def _combine_feather(filters, partition_cols, path, out, tag, schema):
     feather_dataset = FeatherDataset(path, filters=filters)
     if len(feather_dataset.matched_files) == 0:
         print("length of pieces equal to 0!")
@@ -110,12 +110,13 @@ def _combine_feather(filters, partition_cols, path, out, schema):
         print("Writing dataset")
         pq.write_to_dataset(
             table=results_dataset,
+            partition_filename_cb=lambda x:'var_chunk_{}.parquet'.format(tag),
             root_path=out,
             partition_cols=partition_cols,
             row_group_size=524288)
 
 
-def combine_per_cohort(path, out, phenotypes, cohorts):
+def combine_per_cohort(path, out, tag, phenotypes, cohorts):
     partition_cols = ["phenotype".decode("utf8"), "cohort".decode("utf8")]
 
     schema = PYARROW_SCHEMA_COHORT
@@ -126,10 +127,10 @@ def combine_per_cohort(path, out, phenotypes, cohorts):
             print(phenotype)
             filters = [("cohort".decode("utf8"), "=", cohort.decode("utf8")),
                        ("phenotype".decode("utf8"), "=", phenotype.decode("utf8"))]
-            _combine_feather(filters, partition_cols, path, out, schema)
+            _combine_feather(filters, partition_cols, path, out, tag, schema)
 
 
-def combine_meta(path, out, phenotypes):
+def combine_meta(path, out, tag, phenotypes):
     partition_cols = ["phenotype".decode("utf8")]
 
     schema = PYARROW_SCHEMA_META
@@ -137,7 +138,7 @@ def combine_meta(path, out, phenotypes):
     for phenotype in phenotypes:
         print(phenotype)
         filters = [("phenotype".decode("utf8"), "=", phenotype.decode("utf8"))]
-        _combine_feather(filters, partition_cols, path, out, schema)
+        _combine_feather(filters, partition_cols, path, out, tag, schema)
 
 
 # Main
@@ -147,16 +148,17 @@ def main(argv=None):
     # Process input
     parser = argparse.ArgumentParser()
     parser.add_argument('--path')
-    parser.add_argument('--out')
+    parser.add_argument('--out-dir')
+    parser.add_argument('--out-tag')
     parser.add_argument('--phenotypes')
     parser.add_argument('--cohorts', nargs="+", required=False, default=None)
     args = parser.parse_args(argv)
     # Perform method
     phenotypes_file = pd.read_csv(args.phenotypes)
     if args.cohorts is not None:
-        combine_per_cohort(args.path, args.out, phenotypes_file.ID, args.cohorts)
+        combine_per_cohort(args.path, args.out_dir, args.out_tag, phenotypes_file.ID, args.cohorts)
     else:
-        combine_meta(args.path, args.out, phenotypes_file.ID)
+        combine_meta(args.path, args.out_dir, args.out_tag, phenotypes_file.ID)
     return 0
 
 
