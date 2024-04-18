@@ -97,5 +97,7 @@ process PerCohortAnalysisPerGene {
     mkdir -p MetaAnalysisResultsEncoded/cohort/null/null
     touch MetaAnalysisResultsEncoded/cohort/null/null/null.parquet
 
+    mkdir -p MetaAnalysisResultsEncoded/meta/null
+    touch MetaAnalysisResultsEncoded/meta/null/null.parquet
     '''
 }

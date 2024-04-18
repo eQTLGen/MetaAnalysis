@@ -2,8 +2,8 @@
 
 
 process MetaAnalysisPerGene {
-    publishDir "${params.outdir}/eqtls/meta", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*/*', saveAs: { fn -> fn.tokenize('/')[2..3].join('/') }
-    publishDir "${params.outdir}/eqtls/cohort", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*/*/*', saveAs: { fn -> fn.tokenize('/')[2..4].join('/') }
+    publishDir "${params.outdir}/eqtls/meta", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..3].join('/') }
+    publishDir "${params.outdir}/eqtls/cohort", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..4].join('/') }
     scratch true
 
     input:
@@ -94,5 +94,8 @@ process MetaAnalysisPerGene {
 
     mkdir -p MetaAnalysisResultsEncoded/cohort/null/null
     touch MetaAnalysisResultsEncoded/cohort/null/null/null.parquet
+
+    mkdir -p MetaAnalysisResultsEncoded/meta/null
+    touch MetaAnalysisResultsEncoded/meta/null/null.parquet
     '''
 }
