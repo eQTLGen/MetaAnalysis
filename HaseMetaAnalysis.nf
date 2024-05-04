@@ -100,23 +100,18 @@ partial_derivatives_ch = input_ch.map{row -> row.partial_derivatives}.collect()
 snp_inclusion_ch = input_ch.map{row -> row.snp_inclusion}.collect()
 gene_inclusion_ch = input_ch.map{row -> row.gene_inclusion}.collect()
 
-all_genes_ch = input_ch
-  .map{row -> file(row.gene_inclusion)}
-  .splitCsv(header: true)
-  .map{gene_row -> gene_row.ID}
-  .unique()
-
-if (params.genes_percohort != '') {
-  genes_per_cohort_ch = Channel.fromPath(params.genes_percohort)
-    .splitCsv( header:true ).map { row -> row.ID }
-
-  gene_chunk_ch = Channel.of('ID').concat(genes_per_cohort_ch)
-    .collectFile(name: 'gene_chunk_ch.txt', keepHeader:false, newLine:true, sort: false, skip:0).view()
-    .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
-} else {
-  gene_chunk_ch = Channel.of('ID').concat(all_genes_ch).collectFile(name: 'gene_chunk_ch.txt', keepHeader:false, newLine:true, sort:false, skip:0)
-    .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
-}
+custom_gene_filter_ch = Channel.fromPath(params.genes_percohort)
+// if (params.genes_percohort != '') {
+//   genes_per_cohort_ch = Channel.fromPath(params.genes_percohort)
+//     .splitCsv( header:true ).map { row -> row.ID }
+//
+//   gene_chunk_ch = Channel.of('ID').concat(genes_per_cohort_ch)
+//     .collectFile(name: 'gene_chunk_ch.txt', keepHeader:false, newLine:true, sort: false, skip:0).view()
+//     .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+// } else {
+//   gene_chunk_ch = Channel.of('ID').concat(all_genes_ch).collectFile(name: 'gene_chunk_ch.txt', keepHeader:false, newLine:true, sort:false, skip:0)
+//     .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+// }
 
 variants_percohort_ch = Channel.fromPath(params.variants_percohort)
   .collect().view()
@@ -132,9 +127,13 @@ if (params.covariates) {
   covariate_file = channel.fromPath(params.covariates).collect().view()
 } else {covariate_file = Channel.value("")}
 
-chunk_ch = Channel.from(1..chunks).combine(gene_chunk_ch)
 
 workflow {
+  gene_chunk_ch = PreMetaGeneFilter(gene_inclusion_ch, custom_gene_filter_ch, expression_ch)
+    .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+
+  chunk_ch = Channel.from(1..chunks).combine(gene_chunk_ch)
+
   if (params.th_full == '') {
       PerCohortAnalysisResult = MetaAnalysisPerGene(th, chunks, chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
   } else
