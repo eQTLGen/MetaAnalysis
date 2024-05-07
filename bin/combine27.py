@@ -87,8 +87,11 @@ class FeatherDataset:
 
 
 # Functions
-def _combine(filters, partition_cols, path, out, schema):
-    parquet_dataset = pq.ParquetDataset(path, schema=schema, validate_schema=False, filters=filters)
+def _combine(filters, partition_cols, path, out, tag, schema, remove_old=False, verbose=False):
+    partition_path = os.path.sep.join(["".join(filter) for filter in filters])
+    parquet_dataset = pq.ParquetDataset(os.path.join(path, partition_path), schema=schema, validate_schema=False)
+    if verbose:
+        print(parquet_dataset.pieces)
     if len(parquet_dataset.pieces) == 0:
         print("length of pieces equal to 0!")
     else:
@@ -96,9 +99,14 @@ def _combine(filters, partition_cols, path, out, schema):
         print("Writing dataset")
         pq.write_to_dataset(
             table=results_dataset,
-            root_path=out,
-            partition_cols=partition_cols,
+            partition_filename_cb=lambda x: 'var_chunk_{}.parquet'.format(tag),
+            root_path=os.path.join(out, partition_path),
             row_group_size=524288)
+        if remove_old or path == out:
+            for piece in parquet_dataset.pieces:
+                if verbose:
+                    print("removing:", piece.path)
+                os.remove(piece.path)
 
 
 def _combine_feather(filters, partition_cols, path, out, tag, schema):
@@ -116,7 +124,7 @@ def _combine_feather(filters, partition_cols, path, out, tag, schema):
             row_group_size=524288)
 
 
-def combine_per_cohort(path, out, tag, phenotypes, cohorts):
+def combine_per_cohort(path, out, tag, phenotypes, cohorts, from_parquet):
     partition_cols = ["phenotype".decode("utf8"), "cohort".decode("utf8")]
 
     schema = PYARROW_SCHEMA_COHORT
@@ -125,12 +133,15 @@ def combine_per_cohort(path, out, tag, phenotypes, cohorts):
         print(cohort)
         for phenotype in phenotypes:
             print(phenotype)
-            filters = [("cohort".decode("utf8"), "=", cohort.decode("utf8")),
-                       ("phenotype".decode("utf8"), "=", phenotype.decode("utf8"))]
-            _combine_feather(filters, partition_cols, path, out, tag, schema)
+            filters = [("phenotype".decode("utf8"), "=", phenotype.decode("utf8")),
+                       ("cohort".decode("utf8"), "=", cohort.decode("utf8"))]
+            if from_parquet:
+                _combine(filters, partition_cols, path, out, tag, schema, remove_old=True)
+            else:
+                _combine_feather(filters, partition_cols, path, out, tag, schema)
 
 
-def combine_meta(path, out, tag, phenotypes):
+def combine_meta(path, out, tag, phenotypes, from_parquet):
     partition_cols = ["phenotype".decode("utf8")]
 
     schema = PYARROW_SCHEMA_META
@@ -138,7 +149,10 @@ def combine_meta(path, out, tag, phenotypes):
     for phenotype in phenotypes:
         print(phenotype)
         filters = [("phenotype".decode("utf8"), "=", phenotype.decode("utf8"))]
-        _combine_feather(filters, partition_cols, path, out, tag, schema)
+        if from_parquet:
+            _combine(filters, partition_cols, path, out, tag, schema, remove_old=True)
+        else:
+            _combine_feather(filters, partition_cols, path, out, tag, schema)
 
 
 # Main
@@ -151,14 +165,15 @@ def main(argv=None):
     parser.add_argument('--out-dir')
     parser.add_argument('--out-tag')
     parser.add_argument('--phenotypes')
+    parser.add_argument('--from-parquet', required=False, default=False, action='store_true')
     parser.add_argument('--cohorts', nargs="+", required=False, default=None)
     args = parser.parse_args(argv)
     # Perform method
     phenotypes_file = pd.read_csv(args.phenotypes)
     if args.cohorts is not None:
-        combine_per_cohort(args.path, args.out_dir, args.out_tag, phenotypes_file.ID, args.cohorts)
+        combine_per_cohort(args.path, args.out_dir, args.out_tag, phenotypes_file.ID, args.cohorts, args.from_parquet)
     else:
-        combine_meta(args.path, args.out_dir, args.out_tag, phenotypes_file.ID)
+        combine_meta(args.path, args.out_dir, args.out_tag, phenotypes_file.ID, args.from_parquet)
     return 0
 
 

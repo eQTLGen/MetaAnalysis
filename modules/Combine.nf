@@ -2,30 +2,21 @@
 
 
 process Combine {
-    cache true
-    publishDir "${params.outdir}/eqtls", mode: 'copy', overwrite: true
-    container 'quay.io/cawarmerdam/eqtlgen_phase2:latest'
 
     input:
-      path partitioned
-      val phenotype
-      path reference
-
-    output:
-      tuple val(phenotype), path("phenotype*"), emit: parquet
-      val 1, emit: signal
+      path genes
+      val outdir
 
     shell:
     '''
     # Combining all parquet files for a specific phenotype
     # Allow multiple phenotypes to be processed in one go
-    # Merge with reference for chrom to quickly be able to select variants in a specific chromosome
 
-    python3 -u !{baseDir}/bin/combine.py \
-    --path !{partitioned} \
-    --pheno !{phenotype} \
-    --out "." \
-    --ref !{reference}
+    python2 !{baseDir}/bin/combine27.py \
+        --path ${outdir}/meta \
+        --out-dir ${outdir}/meta \
+        --out-tag combined \
+        --phenotypes !{genes}
     '''
 }
 
