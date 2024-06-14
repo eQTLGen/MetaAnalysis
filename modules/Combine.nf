@@ -2,6 +2,7 @@
 
 
 process Combine {
+    containerOptions "--bind ${outdir}:${outdir}"
 
     input:
       path genes
@@ -13,9 +14,10 @@ process Combine {
     # Allow multiple phenotypes to be processed in one go
 
     python2 !{baseDir}/bin/combine27.py \
-        --path ${outdir}/meta \
-        --out-dir ${outdir}/meta \
+        --path !{outdir}/meta \
+        --out-dir !{outdir}/meta \
         --out-tag combined \
+        --from-parquet \
         --phenotypes !{genes}
     '''
 }

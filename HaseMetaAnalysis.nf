@@ -7,6 +7,7 @@
 nextflow.enable.dsl = 2
 
 // import modules
+include { PreMetaGeneFilter } from './modules/PreMetaFilters'
 include { MetaAnalyseCohortsPerGene } from './modules/MetaAnalyseCohorts'
 include { PerCohortAnalysisPerGene } from './modules/PerCohortAnalysis'
 include { MetaAnalysisPerGene } from './modules/MetaAnalysis'
@@ -50,7 +51,7 @@ Optional arguments:
 
 //Default parameters
 params.mastertable = ''
-params.genes_percohort = ''
+params.genes_percohort = 'NO_FILE'
 params.variants_percohort = 'NO_FILE'
 params.gene_filter = ''
 params.outdir = ''
@@ -90,7 +91,7 @@ log.info "================================================="
 
 input_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true).view()
+    .splitCsv(header: true, sep: '\t', strip: true)
 
 cohort_ch = input_ch.map{row -> row.cohort}.collect()
 encoded_ch = input_ch.map{row -> row.encoded}.collect()
@@ -100,7 +101,8 @@ partial_derivatives_ch = input_ch.map{row -> row.partial_derivatives}.collect()
 snp_inclusion_ch = input_ch.map{row -> row.snp_inclusion}.collect()
 gene_inclusion_ch = input_ch.map{row -> row.gene_inclusion}.collect()
 
-custom_gene_filter_ch = Channel.fromPath(params.genes_percohort)
+custom_gene_filter_ch = Channel.fromPath(params.genes_percohort).collect()
+
 // if (params.genes_percohort != '') {
 //   genes_per_cohort_ch = Channel.fromPath(params.genes_percohort)
 //     .splitCsv( header:true ).map { row -> row.ID }

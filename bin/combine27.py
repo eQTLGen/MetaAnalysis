@@ -90,6 +90,10 @@ class FeatherDataset:
 def _combine(filters, partition_cols, path, out, tag, schema, remove_old=False, verbose=False):
     partition_path = os.path.sep.join(["".join(filter) for filter in filters])
     parquet_dataset = pq.ParquetDataset(os.path.join(path, partition_path), schema=schema, validate_schema=False)
+    if len(parquet_dataset.pieces) == 0:
+        print("length of pieces equal to 0! retrying reverse..")
+        partition_path = os.path.sep.join(["".join(filter) for filter in filters[::-1]])
+        parquet_dataset = pq.ParquetDataset(os.path.join(path, partition_path), schema=schema, validate_schema=False)
     if verbose:
         print(parquet_dataset.pieces)
     if len(parquet_dataset.pieces) == 0:
@@ -111,6 +115,9 @@ def _combine(filters, partition_cols, path, out, tag, schema, remove_old=False, 
 
 def _combine_feather(filters, partition_cols, path, out, tag, schema):
     feather_dataset = FeatherDataset(path, filters=filters)
+    if len(feather_dataset.matched_files) == 0:
+        print("length of pieces equal to 0! trying reverse...")
+        feather_dataset = FeatherDataset(path, filters=filters[::-1])
     if len(feather_dataset.matched_files) == 0:
         print("length of pieces equal to 0!")
     else:

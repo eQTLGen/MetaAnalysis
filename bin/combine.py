@@ -19,8 +19,6 @@ root directory of this source tree. If not, see <https://www.gnu.org/licenses/>.
 """
 
 # Standard imports.
-from __future__ import print_function
-
 import os
 import sys
 import argparse
@@ -58,52 +56,27 @@ def main(argv=None):
         argv = sys.argv[1:]
     # Process input
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', nargs='+')
+    parser.add_argument('--path')
     parser.add_argument('--phenotypes')
-    parser.add_argument('--out')
-    parser.add_argument('--ref')
 
     args = parser.parse_args(argv)
     # Perform method
 
-    variant_reference = (
-        pd.read_csv(args.ref, compression = 'gzip', sep = ' ')
-        .drop(["allele1", "allele2", "str_allele1", "str_allele2"], axis=1)
-        .rename({"ID": "variant", "bp": "bp", "CHR": "chromosome"}, axis=1)
-        .set_index("variant"))
-
-    variant_table = pa.Table.from_pandas(variant_reference)
-
-    print(variant_reference.head())
-    print(variant_reference.dtypes)
-
     phenotypes = list()
+    per_cohort = False
 
     with open(args.phenotypes) as opened:
         for line in opened:
             phenotypes.append(line.strip())
 
     for phenotype in phenotypes:
-        print(phenotype)
 
-        results_list_phen = list()
-        for chunk_index, chunk_path in enumerate(args.path):
-            phenotype_partition_glob = os.path.join(chunk_path, "phenotype_{}".format(phenotype), "*.parquet")
-            print("(chunk {}/{})".format(chunk_index, len(args.path)))
-
-            for i, (file_name) in enumerate(glob.glob(phenotype_partition_glob)):
-                print("Reading file " + file_name)
-                results_list_phen.append(pq.ParquetDataset(parquet_dataset, filters=[("phenotype".decode("utf8"), "=", )]).read())
-
-        print("Concatenating datasets")
-        results_concatenated = pa.concat_tables(results_list_phen)
-
-        print("Is data per cohort?")
-        per_cohort = "cohort" in results_concatenated.columns
+        print("Reading phenotype:", phenotype)
+        parquet_dataset = pq.ParquetDataset(args.path, filters=[("phenotype", "=", phenotype)]))
 
         print("Writing dataset")
         pq.write_to_dataset(
-            table=results_with_chromosome,
+            table=parquet_dataset,
             root_path=args.out,
             partition_cols=["phenotype", "cohort"] if per_cohort else ["phenotype"],
             max_rows_per_group=524288)

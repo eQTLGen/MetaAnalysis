@@ -64,23 +64,24 @@ def main(argv=None):
 
     for i, expression_folder in enumerate(args.expression):
         expression_path = os.path.join(expression_folder, os.listdir(expression_folder)[0])
-        gene_inclusion = pd.read_csv(args.gene_inclusion, sep="\t", header=0, names=['ID'])
+        gene_inclusion = pd.read_csv(args.gene_inclusion[i], sep="\t", header=0, names=['ID'])
 
         sample_size = len(pd.read_csv(expression_path, sep="\t", header=0).index)
         total_sample_size += sample_size
 
         gene_inclusion['sample_size'] = sample_size
         gene_inclusion['cohort_number'] = 1
+        print(gene_inclusion.head())
 
         gene_inclusion_list.append(gene_inclusion)
 
-    gene_inclusion_total = pd.concat(gene_inclusion_list, axis=0).groupby('ID').agg({'sample_size': 'sum', 'cohort_number': 'sum'})
+    gene_inclusion_total = pd.concat(gene_inclusion_list, axis=0).groupby('ID').agg({'sample_size': 'sum', 'cohort_number': 'sum'}).reset_index()
 
-    genes_to_analyse = (gene_inclusion_total[
-        np.logical_and(gene_inclusion_total.sample_size >= total_sample_size * 0.5,
-        gene_inclusion_total.cohort_number >= n_cohorts * 0.5), 'ID'])
+    genes_to_analyse = (gene_inclusion_total.loc[
+        np.logical_and(gene_inclusion_total['sample_size'] >= total_sample_size * 0.5,
+        gene_inclusion_total['cohort_number'] >= n_cohorts * 0.5), 'ID'])
 
-    genes_to_analyse.to_csv(args.output, sep="\t", index_col=False, header=True)
+    genes_to_analyse.to_csv(args.output, sep="\t", index=False, header=True)
     # Output
     return 0
 

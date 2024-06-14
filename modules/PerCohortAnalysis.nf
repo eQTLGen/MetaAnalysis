@@ -2,9 +2,9 @@
 
 
 process PerCohortAnalysisPerGene {
-    publishDir "${params.outdir}/eqtls/meta", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..3].join('/') }
-    publishDir "${params.outdir}/eqtls/cohort", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..4].join('/') }
-    scratch true
+    publishDir "${params.outdir}/eqtls/meta", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..3].join('/') }
+    publishDir "${params.outdir}/eqtls/cohort", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..4].join('/') }
+    scratch false
 
     input:
       val th
