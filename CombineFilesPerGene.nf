@@ -75,8 +75,8 @@ log.info "================================================="
 // Process input file paths
 
 workflow {
-  gene_chunk_ch = Channel.fromPath(params.outdir + "/eqtls/filtered_gene_list.txt")
-      .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+  gene_chunk_ch = Channel.fromPath(params.outdir + "/eqtls/filtered_gene_list_3.txt")
+      .splitText( by:params.gene_chunk_size, keepHeader:false, file:true ).view()
 
   PerCohortAnalysisResult = Combine(gene_chunk_ch, params.outdir + "/eqtls")
 }
