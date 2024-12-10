@@ -60,6 +60,7 @@ params.th = 0
 params.covariates = ''
 params.gene_chunk_size = 100
 params.variant_chunks = 20
+params.mapper_chunk_size = 1000
 params.th_full = ''
 
 log.info """=================================================
@@ -94,14 +95,15 @@ input_ch = Channel.fromPath(params.mastertable)
     .splitCsv(header: true, sep: '\t', strip: true)
 
 cohort_ch = input_ch.map{row -> row.cohort}.collect()
+exp_platform_ch = input_ch.map{row -> row.dataset_platform}.collect().view()
 encoded_ch = input_ch.map{row -> row.encoded}.collect()
 genotype_ch = input_ch.map{row -> row.genotype}.collect()
 expression_ch = input_ch.map{row -> row.expression}.collect()
 partial_derivatives_ch = input_ch.map{row -> row.partial_derivatives}.collect()
 snp_inclusion_ch = input_ch.map{row -> row.snp_inclusion}.collect()
-gene_inclusion_ch = input_ch.map{row -> row.gene_inclusion}.collect()
+gene_inclusion_ch = input_ch.map{row -> row.gene_inclusion}.view().collect()
 
-custom_gene_filter_ch = Channel.fromPath(params.genes_percohort).collect()
+custom_gene_filter_ch = Channel.fromPath(params.genes_percohort).view().collect()
 
 // if (params.genes_percohort != '') {
 //   genes_per_cohort_ch = Channel.fromPath(params.genes_percohort)
@@ -124,6 +126,7 @@ mapper = file(params.mapperpath)
 th = params.th
 th_full = params.th_full
 chunks = params.variant_chunks
+mapper_chunk_size = params.mapper_chunk_size
 
 if (params.covariates) {
   covariate_file = channel.fromPath(params.covariates).collect().view()
@@ -131,17 +134,19 @@ if (params.covariates) {
 
 
 workflow {
-  gene_chunk_ch = PreMetaGeneFilter(gene_inclusion_ch, custom_gene_filter_ch, expression_ch)
-    .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+  gene_chunk_ch = PreMetaGeneFilter(gene_inclusion_ch, exp_platform_ch, custom_gene_filter_ch, expression_ch)
+    .splitText( by:params.gene_chunk_size, keepHeader:true, file:true )
 
-  chunk_ch = Channel.from(1..chunks).combine(gene_chunk_ch)
+  if (params.variant_chunks != 0 & params.gene_chunk_size != 0) {
+    chunk_ch = Channel.from(1..chunks).combine(gene_chunk_ch)
 
-  if (params.th_full == '') {
-      PerCohortAnalysisResult = MetaAnalysisPerGene(th, chunks, chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
-  } else
-      PerCohortAnalysisResult = PerCohortAnalysisPerGene(th, th_full, chunks, chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch)
-}
+    if (params.th_full == '') {
+        PerCohortAnalysisResult = MetaAnalysisPerGene(th, chunks, chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch, mapper_chunk_size)
+    } else
+        PerCohortAnalysisResult = PerCohortAnalysisPerGene(th, th_full, chunks, chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch, mapper_chunk_size)
+    }
+  }
 
-workflow.onComplete {
+  workflow.onComplete {
     println ( workflow.success ? "Pipeline finished!" : "Something crashed...debug!" )
 }

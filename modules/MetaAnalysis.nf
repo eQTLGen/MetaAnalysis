@@ -4,6 +4,7 @@
 process MetaAnalysisPerGene {
     publishDir "${params.outdir}/eqtls/meta", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..3].join('/') }
     publishDir "${params.outdir}/eqtls/cohort", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..4].join('/') }
+    memory { check_max( 16.GB + 2.GB * cohort.size() * task.attempt ) }
     scratch true
 
     input:
@@ -20,6 +21,7 @@ process MetaAnalysisPerGene {
       path partial_derivatives, stageAs: "pd_???", arity: '1..*'
       path snp_inclusion, stageAs: "snp_inclusion_???", arity: '1..*'
       path gene_inclusion, stageAs: "gene_inclusion_???", arity: '1..*'
+      val mapper_chunk_size
 
     output:
       path 'MetaAnalysisResultsEncoded/meta/*/*.parquet', emit: meta
@@ -39,9 +41,9 @@ process MetaAnalysisPerGene {
 
     mkdir tmp_files
 
-    cp -r genotypes* tmp_files/
-    cp -r expression* tmp_files/
-    cp -r pd* tmp_files/
+    rsync -av genotypes* tmp_files/
+    rsync -av expression* tmp_files/
+    rsync -avL pd* tmp_files/
 
     touch dummy_file.txt
 
@@ -72,7 +74,7 @@ process MetaAnalysisPerGene {
       -thr !{th} \
       -cluster "y" \
       -node !{nr_chunks} !{chunk} \
-      -mapper_chunk 500 \
+      -mapper_chunk !{mapper_chunk_size} \
       -ref_name 1000G-30x_ref \
       -snp_id_inc !{snp_inclusion_per_cohort} \
       -ph_id_inc !{gene_inclusion.name.collect { filename -> "intersect_$filename" }.join(' ')} \
