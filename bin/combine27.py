@@ -95,7 +95,7 @@ def _combine(filters, partition_cols, path, out, tag, schema, remove_old=False, 
         print(parquet_dataset.pieces)
     if len(parquet_dataset.pieces) == 0:
         print("length of pieces equal to 0!")
-    else:
+    elif len(parquet_dataset.pieces) > 1:
         results_dataset = parquet_dataset.read()
         print("Writing dataset")
         pq.write_to_dataset(
