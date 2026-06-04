@@ -55,32 +55,43 @@ def main(argv=None):
     parser.add_argument('--expression', nargs='+')
     parser.add_argument('--gene-inclusion', nargs='+')
     parser.add_argument('--output')
+    parser.add_argument('--expression-platform', nargs='+')
     args = parser.parse_args(argv)
     # Perform method
 
     gene_inclusion_list = list()
     total_sample_size = 0
-    n_cohorts = len(args.expression)
+    n_cohorts = 0
 
     for i, expression_folder in enumerate(args.expression):
         expression_path = os.path.join(expression_folder, os.listdir(expression_folder)[0])
-        gene_inclusion = pd.read_csv(args.gene_inclusion, sep="\t", header=0, names=['ID'])
+        gene_inclusion = pd.read_csv(args.gene_inclusion[i], sep="\t", header=0, names=['ID'])
+        expression_platform = args.expression_platform[i]
+        print(expression_platform)
+        if (expression_platform != "RNAseq") & (expression_platform != "low-cov RNA-seq"):
+            print("continuing...")
+            continue
 
         sample_size = len(pd.read_csv(expression_path, sep="\t", header=0).index)
         total_sample_size += sample_size
+        n_cohorts += 1
 
         gene_inclusion['sample_size'] = sample_size
         gene_inclusion['cohort_number'] = 1
+        print(gene_inclusion.head())
 
         gene_inclusion_list.append(gene_inclusion)
 
-    gene_inclusion_total = pd.concat(gene_inclusion_list, axis=0).groupby('ID').agg({'sample_size': 'sum', 'cohort_number': 'sum'})
+    print("Number of cohorts: {}".format(n_cohorts))
+    print("Number of samples: {}".format(total_sample_size))
 
-    genes_to_analyse = (gene_inclusion_total[
-        np.logical_and(gene_inclusion_total.sample_size >= total_sample_size * 0.5,
-        gene_inclusion_total.cohort_number >= n_cohorts * 0.5), 'ID'])
+    gene_inclusion_total = pd.concat(gene_inclusion_list, axis=0).groupby('ID').agg({'sample_size': 'sum', 'cohort_number': 'sum'}).reset_index()
 
-    genes_to_analyse.to_csv(args.output, sep="\t", index_col=False, header=True)
+    genes_to_analyse = (gene_inclusion_total.loc[
+        np.logical_and(gene_inclusion_total['sample_size'] >= total_sample_size * 0.5,
+        gene_inclusion_total['cohort_number'] >= n_cohorts * 0.5), 'ID'])
+
+    genes_to_analyse.to_csv(args.output, sep="\t", index=False, header=True)
     # Output
     return 0
 

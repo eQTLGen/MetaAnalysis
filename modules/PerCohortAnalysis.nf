@@ -2,8 +2,8 @@
 
 
 process PerCohortAnalysisPerGene {
-    publishDir "${params.outdir}/eqtls/meta", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..3].join('/') }
-    publishDir "${params.outdir}/eqtls/cohort", mode: 'move', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..4].join('/') }
+    publishDir "${params.outdir}/eqtls/meta", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..3].join('/') }
+    publishDir "${params.outdir}/eqtls/cohort", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..4].join('/') }
     scratch true
 
     input:
@@ -21,6 +21,7 @@ process PerCohortAnalysisPerGene {
       path partial_derivatives, stageAs: "pd_???", arity: '1..*'
       path snp_inclusion, stageAs: "snp_inclusion_???", arity: '1..*'
       path gene_inclusion, stageAs: "gene_inclusion_???", arity: '1..*'
+      val mapper_chunk_size
 
     output:
       path 'MetaAnalysisResultsEncoded/meta/*/*.parquet', emit: meta
@@ -40,9 +41,9 @@ process PerCohortAnalysisPerGene {
 
     mkdir tmp_files
 
-    cp -r genotypes* tmp_files/
-    cp -r expression* tmp_files/
-    cp -r pd* tmp_files/
+    rsync -av genotypes* tmp_files/
+    rsync -av expression* tmp_files/
+    rsync -avL pd* tmp_files/
 
     if [[ !{variants_per_cohort.name} != 'NO_FILE' ]]; then
         # Filter snp inclusion files to only contain snps to be included
@@ -72,7 +73,7 @@ process PerCohortAnalysisPerGene {
       -thr_full_log !{th_full} \
       -cluster "y" \
       -node !{nr_chunks} !{chunk} \
-      -mapper_chunk 1000 \
+      -mapper_chunk !{mapper_chunk_size} \
       -ref_name 1000G-30x_ref \
       -snp_id_inc !{snp_inclusion_per_cohort} \
       -ph_id_inc !{gene_inclusion.name.collect { filename -> "intersect_$filename" }.join(' ')} \

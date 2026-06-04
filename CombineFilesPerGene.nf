@@ -75,8 +75,8 @@ log.info "================================================="
 // Process input file paths
 
 workflow {
-  gene_chunk_ch = Channel.fromPath(params.outdir + "/filtered_gene_list.txt")
-      .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+  gene_chunk_ch = Channel.fromPath(params.outdir + "/available_genes.txt")
+      .splitText( by:params.gene_chunk_size, keepHeader:false, file:true ).view()
 
   PerCohortAnalysisResult = Combine(gene_chunk_ch, params.outdir)
 }
