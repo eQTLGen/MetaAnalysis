@@ -7,7 +7,8 @@
 nextflow.enable.dsl = 2
 
 // import modules
-include { Partition } from './modules/Partition'
+include { OldPartitionPerCohort } from './modules/Partition'
+include { ListPhenotypes } from './modules/ListPhenotypes'
 include { Combine } from './modules/Combine'
 
 def helpmessage() {
@@ -27,6 +28,7 @@ Pay attention that it does not explicitly overwrite the output folder, so clean 
 //Default parameters
 params.input = ''
 params.outdir = ''
+params.chunks = 100
 
 log.info """=================================================
 HASE meta-analyzer v${workflow.manifest.version}"
@@ -50,17 +52,17 @@ log.info "================================================="
 
 // Process input file paths
 
-parquet = Channel.fromPath(params.input, glob: true)
-    .ifEmpty { error "Cannot find input: ${params.input}" }
-    .collect()
+parquet = Channel.fromPath(params.input).collect()
+variant_reference_ch = Channel.fromPath(params.reference).collect()
 
-out = Channel.fromPath(params.outdir)
+chunks = params.chunks
+chunk = Channel.from(1..chunks)
 
 workflow {
 
-phenotypes = channel.from("ENSG00000004487", "ENSG00000010626", "ENSG00000028839", "ENSG00000059758", "ENSG00000180481")
-Partition(parquet)
-Combine(Partition.out, phenotypes, out)
+OldPartitionPerCohort(parquet, chunk)
+ListPhenotypes(OldPartitionPerCohort.out.phenotypes.collect())
+Combine(OldPartitionPerCohort.out.partitioned.collect(), ListPhenotypes.out.splitText( by: 100, file: true ), variant_reference_ch)
 
 }
 

@@ -1,28 +1,23 @@
 #!/bin/bash nextflow
 
 
-process MetaAnalyseCohorts {
-
-    //tag "chunk $chunk"
-
-    publishDir "${params.outdir}", mode: 'copy'
+process MetaAnalyseCohortsPerGene {
 
     input:
-      val chunk
-      path mapper
       val th
-      val nr_chunks
-      path snp_inclusion
-      path gene_inclusion, stageAs: "gene_inclusion_???"
+      path genes
+      path mapper
       path covariate_filtering
+      val cohort
+      val encoded
       path genotype, stageAs: "genotypes_???"
       path expression, stageAs: "expression_???"
       path partial_derivatives, stageAs: "pd_???"
-      val cohort
-      val encoded
+      path snp_inclusion, stageAs: "snp_inclusion_???"
+      path gene_inclusion, stageAs: "gene_inclusion_???"
 
     output:
-      path 'MetaAnalysisResultsEncoded/*.parquet'
+      tuple path('MetaAnalysisResultsEncoded/meta'), emit: meta
 
     shell:
     '''
@@ -32,16 +27,24 @@ process MetaAnalyseCohorts {
 
     echo !{snp_inclusion}
 
-    cohort=$(echo !{cohort} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
-    encoded=$(echo !{encoded} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
+    echo !{genes.join("\n")} > gene_chunk.txt
 
-    genotype=$(echo !{genotype} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
-    expression=$(echo !{expression} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
-    partial_derivatives=$(echo !{partial_derivatives} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
+    for gene_inclusion_file in !{gene_inclusion.join(" ")}; do
+      echo "ID" > "intersect_${gene_inclusion_file}"
+      comm -12 gene_chunk.txt | sort) <(sort ${gene_inclusion_file}) >> "intersect_${gene_inclusion_file}"
+    done
 
-    snp_inclusion=$(echo !{snp_inclusion} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
-    gene_inclusion=$(echo !{gene_inclusion} | sed -r 's/\\]//g' | sed -r 's/\\[//g' | sed -r 's/,//g')
+    cohort=!{cohort.join(" ")}
+    encoded=!{encoded.join(" ")}
 
+    genotype=!{genotype.join(" ")}
+    expression=!{expression.join(" ")}
+    partial_derivatives=!{partial_derivatives.join(" ")}
+
+    snp_inclusion=!{snp_inclusion.join(" ")}
+    gene_inclusion=!{gene_inclusion.collect { "intersect_$gene_inclusion_file" }.join(" ")}
+
+    # Run hase command
     python2 !{baseDir}/bin/hase/hase.py \
     -study_name ${cohort} \
     -g ${genotype} \
@@ -52,13 +55,30 @@ process MetaAnalyseCohorts {
     -mode meta-classic \
     -encoded ${encoded} \
     -allow_missingness \
-    -node !{nr_chunks} !{chunk} \
     -th !{th} \
     -mapper_chunk 500 \
     -ref_name 1000G-30x_ref \
-    -cluster "y" \
     -snp_id_inc ${snp_inclusion} \
     -ph_id_inc ${gene_inclusion} \
     -ci !{covariate_filtering}
+
+    # Run combine command to combine the parquet files for every gene into one parquet file.
+    # This allows using larger row group size, improving storage characteristics
+    python2 !{baseDir}/bin/combine27.py \
+    --path MetaAnalysisResultsEncoded/meta \
+    --phenotypes !{genes.join(" ")}
     '''
 }
+
+process CleanMetaAnalyseCohorts {
+    tag {CleanMetaAnalyseCohorts}
+
+    input:
+        tuple val(id), val(files_list)
+
+    script:
+    """
+    #clean_work_files.sh "${files_list[0]}"
+    """
+}
+

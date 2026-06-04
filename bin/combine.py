@@ -19,8 +19,6 @@ root directory of this source tree. If not, see <https://www.gnu.org/licenses/>.
 """
 
 # Standard imports.
-from __future__ import print_function
-
 import os
 import sys
 import argparse
@@ -59,27 +57,29 @@ def main(argv=None):
     # Process input
     parser = argparse.ArgumentParser()
     parser.add_argument('--path')
-    parser.add_argument('--pheno')
-    parser.add_argument('--out')
+    parser.add_argument('--phenotypes')
 
     args = parser.parse_args(argv)
     # Perform method
 
-    pyarrow_schema = pa.schema(
-        [("variant", pa.string()),
-         ("phenotype", pa.string()),
-         ("beta", pa.float64()),
-         ("standard_error", pa.float64()),
-         ("i_squared", pa.float64()),
-         ("sample_size", pa.float64())])
+    phenotypes = list()
+    per_cohort = False
 
-    pa_table = pq.ParquetDataset(args.path, schema=pyarrow_schema, filters=('phenotype', '=', args.pheno)).read()
+    with open(args.phenotypes) as opened:
+        for line in opened:
+            phenotypes.append(line.strip())
 
-    pq.write_to_dataset(
-        table=pa_table,
-        root_path=args.out,
-        partition_cols=["phenotype"]
-    )
+    for phenotype in phenotypes:
+
+        print("Reading phenotype:", phenotype)
+        parquet_dataset = pq.ParquetDataset(args.path, filters=[("phenotype", "=", phenotype)]))
+
+        print("Writing dataset")
+        pq.write_to_dataset(
+            table=parquet_dataset,
+            root_path=args.out,
+            partition_cols=["phenotype", "cohort"] if per_cohort else ["phenotype"],
+            max_rows_per_group=524288)
 
     return 0
 

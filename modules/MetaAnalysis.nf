@@ -1,14 +1,14 @@
-#!/bin/bash nextflow
+#!/bin/bash nextflow 
 
 
-process PerCohortAnalysisPerGene {
+process MetaAnalysisPerGene {
     publishDir "${params.outdir}/eqtls/meta", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/meta/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..3].join('/') }
     publishDir "${params.outdir}/eqtls/cohort", mode: 'link', overwrite: true, pattern: 'MetaAnalysisResultsEncoded/cohort/*/*/*.parquet', saveAs: { fn -> fn.tokenize('/')[2..4].join('/') }
+    memory { check_max( 16.GB + 2.GB * cohort.size() * task.attempt ) }
     scratch true
 
     input:
       val th
-      val th_full
       val nr_chunks
       tuple val(chunk), path(genes)
       path variants_per_cohort
@@ -45,16 +45,18 @@ process PerCohortAnalysisPerGene {
     rsync -av expression* tmp_files/
     rsync -avL pd* tmp_files/
 
+    touch dummy_file.txt
+
     if [[ !{variants_per_cohort.name} != 'NO_FILE' ]]; then
         # Filter snp inclusion files to only contain snps to be included
-        for snp_inclusion_file in !{snp_inclusion.join(' ')}; do
+        for snp_inclusion_file in !{snp_inclusion.join(' ')} 'dummy_file.txt'; do
           echo "ID" > "intersect_${snp_inclusion_file}"
           comm -12 <(tail -n +2 !{variants_per_cohort} | sort) <(sort ${snp_inclusion_file}) >> "intersect_${snp_inclusion_file}"
         done
     fi
 
     # Filter gene inclusion files to only contain genes to be ran in this chunk
-    for gene_inclusion_file in !{gene_inclusion.join(' ')}; do
+    for gene_inclusion_file in !{gene_inclusion.join(' ')} 'dummy_file.txt'; do
       echo "ID" > "intersect_${gene_inclusion_file}"
       comm -12 <(tail -n +2 !{genes} | sort) <(sort ${gene_inclusion_file}) >> "intersect_${gene_inclusion_file}"
     done
@@ -62,15 +64,14 @@ process PerCohortAnalysisPerGene {
     python2 -u !{baseDir}/bin/hase/hase.py \
       -study_name !{cohort.join(" ")} \
       -g !{genotype.name.collect{filename -> "tmp_files/$filename"}.join(' ')} \
-      -ph !{expression.name.collect{filename -> "tmp_files/$filename"}.join(' ')}  \
+      -ph !{expression.name.collect{filename -> "tmp_files/$filename"}.join(' ')} \
       -derivatives !{partial_derivatives.name.collect{filename -> "tmp_files/$filename"}.join(' ')} \
       -mapper !{mapper}/ \
       -o MetaAnalysisResultsEncodedTmp \
       -mode meta-classic \
       -encoded !{encoded.join(" ")} \
-      -max-missingness-rate 0.8 \
+      -max-missingness-rate 0.5 \
       -thr !{th} \
-      -thr_full_log !{th_full} \
       -cluster "y" \
       -node !{nr_chunks} !{chunk} \
       -mapper_chunk !{mapper_chunk_size} \

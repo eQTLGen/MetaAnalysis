@@ -1,15 +1,20 @@
 #!/bin/bash nextflow
 
 
-/* 
- * enables modules 
+/*
+ * enables modules
  */
 nextflow.enable.dsl = 2
 
 // import modules
-include { MetaAnalyseCohorts } from './modules/MetaAnalyseCohorts'
-include { PerCohortAnalysis } from './modules/PerCohortAnalysis'
+include { PreMetaGeneFilter } from './modules/PreMetaFilters'
+include { MetaAnalyseCohortsPerGene } from './modules/MetaAnalyseCohorts'
+include { PerCohortAnalysisPerGene } from './modules/PerCohortAnalysis'
+include { MetaAnalysisPerGene } from './modules/MetaAnalysis'
 include { SubsetGenesInclusion } from './modules/SubsetGenesInclusion'
+include { Partition; Partition as PartitionPerCohort; CleanPartition } from './modules/Partition'
+include { ListPhenotypes } from './modules/ListPhenotypes'
+include { Combine; Combine as CombinePerCohort; CleanCombine } from './modules/Combine'
 
 def helpmessage() {
 
@@ -46,12 +51,17 @@ Optional arguments:
 
 //Default parameters
 params.mastertable = ''
-params.genes_percohort = ''
-params.outputpath = ''
+params.genes_percohort = 'NO_FILE'
+params.variants_percohort = 'NO_FILE'
+params.gene_filter = ''
+params.outdir = ''
 params.mapperpath = ''
 params.th = 0
 params.covariates = ''
-params.chunks = 100
+params.gene_chunk_size = 100
+params.variant_chunks = 20
+params.mapper_chunk_size = 1000
+params.th_full = ''
 
 log.info """=================================================
 HASE meta-analyzer v${workflow.manifest.version}"
@@ -80,82 +90,63 @@ log.info "================================================="
 
 // Process input file paths
 
-cohort_ch = Channel.fromPath(params.mastertable)
+input_ch = Channel.fromPath(params.mastertable)
     .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
     .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.cohort ]}
-    .collect()
 
-genotype_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.genotype ]}
-    .collect()
-    
-expression_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.expression ]}
-    .collect()
-    
-partial_derivatives_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.partial_derivatives ]}
-    .collect()
-    
-encoded_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.encoded}" ]}
-    .collect().view()
-    
-snp_inclusion_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.snp_inclusion}" ]}
-    .collect()
+cohort_ch = input_ch.map{row -> row.cohort}.collect()
+exp_platform_ch = input_ch.map{row -> row.dataset_platform}.collect().view()
+encoded_ch = input_ch.map{row -> row.encoded}.collect()
+genotype_ch = input_ch.map{row -> row.genotype}.collect()
+expression_ch = input_ch.map{row -> row.expression}.collect()
+partial_derivatives_ch = input_ch.map{row -> row.partial_derivatives}.collect()
+snp_inclusion_ch = input_ch.map{row -> row.snp_inclusion}.collect()
+gene_inclusion_ch = input_ch.map{row -> row.gene_inclusion}.view().collect()
 
-gene_inclusion_ch = Channel.fromPath(params.mastertable)
-    .ifEmpty { error "Cannot find master table from: ${params.mastertable}" }
-    .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ "${row.gene_inclusion}" ]}
-    .collect()
+custom_gene_filter_ch = Channel.fromPath(params.genes_percohort).view().collect()
 
-if (params.genes_percohort) {
-  gene_percohort_ch = Channel.fromPath(params.genes_percohort)
-   .ifEmpty { error "Cannot find master table from: ${params.genes_percohort}" }
-   .collect()
-}
+// if (params.genes_percohort != '') {
+//   genes_per_cohort_ch = Channel.fromPath(params.genes_percohort)
+//     .splitCsv( header:true ).map { row -> row.ID }
+//
+//   gene_chunk_ch = Channel.of('ID').concat(genes_per_cohort_ch)
+//     .collectFile(name: 'gene_chunk_ch.txt', keepHeader:false, newLine:true, sort: false, skip:0).view()
+//     .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+// } else {
+//   gene_chunk_ch = Channel.of('ID').concat(all_genes_ch).collectFile(name: 'gene_chunk_ch.txt', keepHeader:false, newLine:true, sort:false, skip:0)
+//     .splitText( by:params.gene_chunk_size, keepHeader:true, file:true ).view()
+// }
+
+variants_percohort_ch = Channel.fromPath(params.variants_percohort)
+  .collect().view()
 
 mapper = file(params.mapperpath)
 
-test_ch = Channel.fromPath(params.mastertable)
-
 // Optional arguments
 th = params.th
-chunks = params.chunks
+th_full = params.th_full
+chunks = params.variant_chunks
+mapper_chunk_size = params.mapper_chunk_size
 
 if (params.covariates) {
-  covariate_file = file(params.covariates)
+  covariate_file = channel.fromPath(params.covariates).collect().view()
 } else {covariate_file = Channel.value("")}
 
-chunk = Channel.from(1..chunks)
 
 workflow {
-  if (params.genes_percohort) {
-    subset_gene_inclusion_ch = SubsetGenesInclusion(gene_inclusion_ch, gene_percohort_ch)
-    PerCohortAnalysis(chunk, mapper, th, chunks, snp_inclusion_ch,
-      subset_gene_inclusion_ch.collect(), gene_percohort_ch, covariate_file, genotype_ch, expression_ch,
-      partial_derivatives_ch, cohort_ch, encoded_ch)
-  }
-  else {
-    MetaAnalyseCohorts(chunk, mapper, th, chunks, snp_inclusion_ch,
-      gene_inclusion_ch, covariate_file, genotype_ch, expression_ch,
-      partial_derivatives_ch, cohort_ch, encoded_ch)
-  }
-}
+  gene_chunk_ch = PreMetaGeneFilter(gene_inclusion_ch, exp_platform_ch, custom_gene_filter_ch, expression_ch)
+    .splitText( by:params.gene_chunk_size, keepHeader:true, file:true )
 
-workflow.onComplete {
+  if (params.variant_chunks != 0 & params.gene_chunk_size != 0) {
+    chunk_ch = Channel.from(1..chunks).combine(gene_chunk_ch)
+
+    if (params.th_full == '') {
+        PerCohortAnalysisResult = MetaAnalysisPerGene(th, chunks, chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch, mapper_chunk_size)
+    } else
+        PerCohortAnalysisResult = PerCohortAnalysisPerGene(th, th_full, chunks, chunk_ch, variants_percohort_ch, mapper, covariate_file, cohort_ch, encoded_ch, genotype_ch, expression_ch, partial_derivatives_ch, snp_inclusion_ch, gene_inclusion_ch, mapper_chunk_size)
+    }
+  }
+
+  workflow.onComplete {
     println ( workflow.success ? "Pipeline finished!" : "Something crashed...debug!" )
 }

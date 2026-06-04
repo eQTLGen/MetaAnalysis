@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --time=48:00:00
+#SBATCH --time=6:00:00
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=2G
@@ -20,8 +20,9 @@ nextflow_path=/gpfs/space/GI/eQTLGen/EstBB_testing/MetaAnalysis/tools
 
 set -f
 
-input_path='/gpfs/space/GI/eQTLGen/freeze1/eqtl_mapping/output/empirical_4GenPC20ExpPC_2022-11-14/MetaAnalysisResultsEncoded/node_1_*_result.parquet'
-output_folder=../output/MetaAnalysisResultsPartitioned
+input_path='/gpfs/space/GI/eQTLGen/freeze1/eqtl_mapping/output/empirical_4GenPC20ExpPC_2022-11-14/MetaAnalysisResultsEncoded'
+#output_folder=../output/MetaAnalysisResultsPartitioned
+output_folder=../output/MetaAnalysisResultsPositionalB
 
 NXF_VER=21.10.6 ${nextflow_path}/nextflow run OutputPerPhenotype.nf \
 --input ${input_path} \
